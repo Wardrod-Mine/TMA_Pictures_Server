@@ -1,0 +1,14 @@
+{
+  "name": "tma_channel_server",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "telegraf": "^4.16.3",
+    "dotenv": "^16.4.5",
+    "cors": "^2.8.5"
+  }
+}
