@@ -5,6 +5,13 @@ const express = require('express');
 const cors = require('cors'); // ← реально используем
 const app = express();
 
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+
+// serve static assets (images uploaded)
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+
 const CHANNEL_ID = process.env.CHANNEL_ID || null;
 const CHANNEL_THREAD_ID = process.env.CHANNEL_THREAD_ID ? Number(process.env.CHANNEL_THREAD_ID) : null;
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -257,9 +264,53 @@ app.use(express.json());
 app.use(bot.webhookCallback('/bot'));
 app.use(cors({
   origin: FRONTEND_URL ? [FRONTEND_URL] : true,
-  methods: ['GET','POST'],
+  methods: ['GET','POST','PATCH','DELETE'],
   allowedHeaders: ['Content-Type'],
 }));
+
+// --- image upload support (Cloudinary if configured, otherwise local storage) ---
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+// configure cloudinary from env if present
+if (process.env.CLOUDINARY_URL) {
+  cloudinary.config({ cloudinary_url: process.env.CLOUDINARY_URL });
+}
+
+function ensureDir(p){ try{ fs.mkdirSync(p, { recursive: true }); }catch(e){} }
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const cardId = (req.body.cardId || req.query.cardId || 'misc').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const dir = path.join(__dirname, 'assets', cardId);
+    ensureDir(dir);
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    const name = Date.now() + '-' + file.originalname.replace(/\s+/g, '_');
+    cb(null, name);
+  }
+});
+const upload = multer({ storage });
+
+// POST /upload-image?cardId=product_id
+app.post('/upload-image', upload.single('image'), async (req, res) => {
+  try{
+    if (!req.file) return res.status(400).json({ ok:false, error:'no_file' });
+    const cardId = (req.body.cardId || req.query.cardId || 'misc').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    // if cloudinary configured -> upload
+    if (cloudinary && cloudinary.config && process.env.CLOUDINARY_URL) {
+      try{
+        const folder = `tma_cards/${cardId}`;
+        const result = await cloudinary.uploader.upload(req.file.path, { folder, use_filename: true, unique_filename: false });
+        // remove local file after upload
+        try{ fs.unlinkSync(req.file.path); }catch(e){}
+        return res.json({ ok:true, url: result.secure_url, path: result.public_id });
+      }catch(e){ console.warn('cloud upload failed', e.message); }
+    }
+    // fallback: return local path
+    const rel = `/assets/${path.basename(path.dirname(req.file.path))}/${path.basename(req.file.path)}`;
+    return res.json({ ok:true, path: rel, url: (FRONTEND_URL ? (FRONTEND_URL.replace(/\/$/,'') + rel) : rel) });
+  }catch(e){ console.error('upload error', e.message); return res.status(500).json({ ok:false, error: e.message }); }
+});
 
 function parseBtn(line) {
   const [t, u] = (line || '').split('|');
@@ -382,9 +433,6 @@ app.listen(PORT, async () => {
 });
 
 // ---- Доп. endpoints: проверка admin и CRUD для карточек ----
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
 
 const PRODUCTS_FILE = path.join(__dirname, 'products.json');
 function loadProductsFile(){
@@ -533,5 +581,95 @@ app.delete('/products/:id', express.json(), (req, res) => {
     })();
     return res.json({ ok:true });
   }catch(e){ console.error('DELETE /products error', e.message); return res.status(500).json({ ok:false }); }
+});
+
+// PATCH /products/:id - partial update
+app.patch('/products/:id', express.json(), (req, res) => {
+  try{
+    const { init_data, patch } = req.body || {};
+    const v = verifyInitData(init_data);
+    if (!v) return res.status(403).json({ ok:false, error:'invalid_init_data' });
+    const uid = v.user_id || (v.data && (v.data.user_id || v.data.user && JSON.parse(v.data.user).id));
+    if (!uid || !ADMIN_CHAT_IDS.includes(Number(uid))) return res.status(403).json({ ok:false, error:'not_admin' });
+
+    const id = req.params.id;
+    if (!patch || typeof patch !== 'object') return res.status(400).json({ ok:false, error:'missing_patch' });
+
+    const list = loadProductsFile();
+    const idx = list.findIndex(x => x.id === id);
+    if (idx === -1) return res.status(404).json({ ok:false, error:'not_found' });
+
+    // merge allowed fields
+    const allowed = ['title','shortDescription','short','description','long','imgs','link'];
+    const target = list[idx];
+    for (const k of Object.keys(patch)) {
+      if (allowed.includes(k)) target[k] = patch[k];
+    }
+    target.updatedAt = (new Date()).toISOString();
+    saveProductsFile(list);
+
+    // async push to GitHub
+    (async ()=>{
+      try{ const txt = JSON.stringify(list, null, 2); const f = await githubGetFileContent(); const sha = f && f.sha ? f.sha : undefined; const p = await githubPutFileContent(txt, sha); if (!p.ok) console.warn('github push failed', p.error); else console.log('products.json pushed to GitHub'); }catch(e){ console.warn('push products to github error', e.message); }
+    })();
+
+    return res.json({ ok:true, product: target });
+  }catch(e){ console.error('PATCH /products/:id error', e.message); return res.status(500).json({ ok:false, error: e.message }); }
+});
+
+// DELETE /images - delete image from Cloudinary or local storage and optionally remove from product
+app.delete('/images', express.json(), async (req, res) => {
+  try{
+    const { init_data, public_id, path: imgPath, productId } = req.body || {};
+    const v = verifyInitData(init_data);
+    if (!v) return res.status(403).json({ ok:false, error:'invalid_init_data' });
+    const uid = v.user_id || (v.data && (v.data.user_id || v.data.user && JSON.parse(v.data.user).id));
+    if (!uid || !ADMIN_CHAT_IDS.includes(Number(uid))) return res.status(403).json({ ok:false, error:'not_admin' });
+
+    let deleted = false;
+
+    // Try Cloudinary delete if public_id provided and cloudinary configured
+    if (public_id && cloudinary && cloudinary.uploader && process.env.CLOUDINARY_URL) {
+      try{
+        const r = await cloudinary.uploader.destroy(public_id);
+        console.log('cloudinary destroy', public_id, r);
+        deleted = true;
+      }catch(e){ console.warn('cloudinary destroy failed', e.message); }
+    }
+
+    // If path provided and points to /assets, try local fs delete
+    if (!deleted && imgPath && String(imgPath).startsWith('/assets/')) {
+      try{
+        const rel = imgPath.replace(/^\//,'');
+        const abs = path.join(__dirname, rel);
+        if (fs.existsSync(abs)) { fs.unlinkSync(abs); deleted = true; }
+      }catch(e){ console.warn('local delete failed', e.message); }
+    }
+
+    // If productId provided, remove image entries matching public_id or url
+    if (productId) {
+      try{
+        const list = loadProductsFile();
+        const idx = list.findIndex(x => x.id === productId);
+        if (idx !== -1) {
+          const prod = list[idx];
+          const imgs = (prod.imgs || []).filter(img => {
+            if (!img) return false;
+            if (typeof img === 'string') return !(img.includes(public_id) || img.includes(imgPath || ''));
+            const url = img.url || '';
+            const pid = img.public_id || '';
+            return !(pid === public_id || url.includes(public_id) || url.includes(imgPath || ''));
+          });
+          prod.imgs = imgs;
+          prod.updatedAt = (new Date()).toISOString();
+          saveProductsFile(list);
+          // push to GitHub async
+          (async ()=>{ try{ const txt = JSON.stringify(list, null, 2); const f = await githubGetFileContent(); const sha = f && f.sha ? f.sha : undefined; const p = await githubPutFileContent(txt, sha); if (!p.ok) console.warn('github push failed', p.error); else console.log('products.json pushed to GitHub'); }catch(e){ console.warn('push products to github error', e.message); } })();
+        }
+      }catch(e){ console.warn('remove image from product failed', e.message); }
+    }
+
+    return res.json({ ok:true, deleted });
+  }catch(e){ console.error('DELETE /images error', e.message); return res.status(500).json({ ok:false, error: e.message }); }
 });
 
