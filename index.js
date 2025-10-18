@@ -377,6 +377,8 @@ app.listen(PORT, async () => {
       console.error('❌ Failed to set webhook automatically:', e.message);
     }
   }
+  // Try to sync products from GitHub if configured
+  try{ await syncProductsFromGitHubToLocal(); }catch(e){ /* ignore */ }
 });
 
 // ---- Доп. endpoints: проверка admin и CRUD для карточек ----
@@ -392,6 +394,57 @@ function loadProductsFile(){
 function saveProductsFile(list){
   try{ fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(list, null, 2), 'utf8'); return true; }catch(e){ console.error('saveProductsFile error', e.message); return false; }
 }
+
+// --- GitHub integration helpers (optional) --------------------------------
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
+const GITHUB_REPO = process.env.GITHUB_REPO || '';
+const GITHUB_PRODUCTS_PATH = process.env.GITHUB_PRODUCTS_PATH || 'products.json';
+const GITHUB_COMMIT_BRANCH = process.env.GITHUB_COMMIT_BRANCH || 'main';
+const GITHUB_COMMIT_MESSAGE = process.env.GITHUB_COMMIT_MESSAGE || 'Update products.json via backend';
+
+async function githubGetFileContent(){
+  if (!GITHUB_TOKEN || !GITHUB_REPO) return null;
+  try{
+    const [owner, repo] = GITHUB_REPO.split('/');
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(GITHUB_PRODUCTS_PATH)}?ref=${encodeURIComponent(GITHUB_COMMIT_BRANCH)}`;
+    const res = await fetch(url, { headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json' } });
+    if (!res.ok) { console.warn('githubGetFileContent: not ok', res.status); return null; }
+    const j = await res.json();
+    if (!j || !j.content) return null;
+    const content = Buffer.from(j.content, 'base64').toString('utf8');
+    return { content, sha: j.sha };
+  }catch(e){ console.warn('githubGetFileContent error', e.message); return null; }
+}
+
+async function githubPutFileContent(textContent, sha){
+  if (!GITHUB_TOKEN || !GITHUB_REPO) return { ok:false, error:'no_github_config' };
+  try{
+    const [owner, repo] = GITHUB_REPO.split('/');
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(GITHUB_PRODUCTS_PATH)}`;
+    const body = {
+      message: GITHUB_COMMIT_MESSAGE,
+      content: Buffer.from(textContent, 'utf8').toString('base64'),
+      branch: GITHUB_COMMIT_BRANCH
+    };
+    if (sha) body.sha = sha;
+    const res = await fetch(url, { method: 'PUT', headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json', 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+    const j = await res.json();
+    if (!res.ok) { console.warn('githubPutFileContent failed', res.status, j); return { ok:false, error: j }; }
+    return { ok:true, result: j };
+  }catch(e){ console.warn('githubPutFileContent error', e.message); return { ok:false, error: e.message }; }
+}
+
+// Attempt to fetch products.json from GitHub and save locally (run on startup)
+async function syncProductsFromGitHubToLocal(){
+  try{
+    const f = await githubGetFileContent();
+    if (f && f.content) {
+      try{ fs.writeFileSync(PRODUCTS_FILE, f.content, 'utf8'); console.log('✅ products.json synced from GitHub'); return true; }catch(e){ console.warn('sync write failed', e.message); }
+    }
+  }catch(e){ console.warn('syncProductsFromGitHubToLocal error', e.message); }
+  return false;
+}
+
 
 function verifyInitData(initDataString){
   // initDataString — строка initData из Telegram WebApp
@@ -450,6 +503,17 @@ app.post('/products', express.json(), (req, res) => {
     const list = loadProductsFile().filter(x=>x.id!==product.id);
     list.push(product);
     saveProductsFile(list);
+    // if github configured - push
+    (async ()=>{
+      try{ const txt = JSON.stringify(list, null, 2);
+        // get existing sha
+        const f = await githubGetFileContent();
+        const sha = f && f.sha ? f.sha : undefined;
+        const p = await githubPutFileContent(txt, sha);
+        if (!p.ok) console.warn('github push failed', p.error);
+        else console.log('products.json pushed to GitHub');
+      }catch(e){ console.warn('push products to github error', e.message); }
+    })();
     return res.json({ ok:true, product });
   }catch(e){ console.error('POST /products error', e.message); return res.status(500).json({ ok:false }); }
 });
@@ -464,6 +528,9 @@ app.delete('/products/:id', express.json(), (req, res) => {
     const id = req.params.id;
     let list = loadProductsFile().filter(x=>x.id!==id);
     saveProductsFile(list);
+    (async ()=>{
+      try{ const txt = JSON.stringify(list, null, 2); const f = await githubGetFileContent(); const sha = f && f.sha ? f.sha : undefined; const p = await githubPutFileContent(txt, sha); if (!p.ok) console.warn('github push failed', p.error); else console.log('products.json pushed to GitHub'); }catch(e){ console.warn('push products to github error', e.message); }
+    })();
     return res.json({ ok:true });
   }catch(e){ console.error('DELETE /products error', e.message); return res.status(500).json({ ok:false }); }
 });
