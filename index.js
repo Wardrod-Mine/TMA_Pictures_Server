@@ -262,11 +262,31 @@ bot.on(message('web_app_data'), async (ctx) => {
 // === Express + webhook ===
 app.use(express.json());
 app.use(bot.webhookCallback('/bot'));
+const ALLOWED_ORIGINS = [
+  process.env.FRONTEND_URL,                    // https://tma-pictures-front.onrender.com
+  'https://web.telegram.org',                  // Telegram Web
+  'https://web.telegram.org/a'                 // вариант подпути
+].filter(Boolean);
+
 app.use(cors({
-  origin: FRONTEND_URL ? [FRONTEND_URL] : true,
-  methods: ['GET','POST','PATCH','DELETE'],
+  origin: (origin, cb) => {
+    // Разрешаем без Origin (например, curl, мобильные webview)
+    if (!origin) return cb(null, true);
+    // Разрешаем, если точное совпадение
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    // Дополнительно — пропустим, если это ровно фронт Render (на случай www/слэшей)
+    try {
+      const u = new URL(origin);
+      if (ALLOWED_ORIGINS.some(a => a && new URL(a).host === u.host)) {
+        return cb(null, true);
+      }
+    } catch {}
+    return cb(new Error(`CORS blocked for origin ${origin}`));
+  },
+  methods: ['GET','POST','PATCH','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type'],
 }));
+
 
 // --- image upload support (Cloudinary if configured, otherwise local storage) ---
 const multer = require('multer');
