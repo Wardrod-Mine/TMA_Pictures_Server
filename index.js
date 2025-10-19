@@ -522,12 +522,35 @@ function verifyInitData(initDataString){
 
 app.post('/check_admin', express.json(), (req, res) => {
   try{
-    const { init_data } = req.body || {};
+    const { init_data, init_data_unsafe } = req.body || {};
+    // lightweight logging for debugging (do not log full tokens)
+    try{
+      const keys = Object.keys(req.body || {});
+      console.log('[check_admin] received keys:', keys);
+      if (init_data) console.log('[check_admin] init_data present, len=', String(init_data).length);
+      if (init_data_unsafe && init_data_unsafe.user) console.log('[check_admin] init_data_unsafe.user -> id=', init_data_unsafe.user.id, ' username=', init_data_unsafe.user.username || '');
+    }catch(e){ /* ignore logging errors */ }
+    const ALLOW_UNSAFE = (process.env.ALLOW_UNSAFE_ADMIN === 'true');
+
+    // Try signed init_data first
     const v = verifyInitData(init_data);
-    if (!v) return res.json({ ok:false, isAdmin:false });
-    const uid = v.user_id || (v.data && (v.data.user_id || v.data.user && JSON.parse(v.data.user).id));
-    const isAdm = !!(uid && ADMIN_CHAT_IDS.includes(Number(uid)));
-    return res.json({ ok:true, isAdmin: isAdm, user_id: uid });
+    if (v) {
+      const uid = v.user_id || (v.data && (v.data.user_id || v.data.user && JSON.parse(v.data.user).id));
+      const isAdm = !!(uid && ADMIN_CHAT_IDS.includes(Number(uid)));
+      return res.json({ ok:true, isAdmin: isAdm, user_id: uid, unsafe: false });
+    }
+
+    // Fallback: if allowed by env, accept unsafe init data object (useful for desktop / debug)
+    if (!v && init_data_unsafe && ALLOW_UNSAFE) {
+      try{
+        const uid = init_data_unsafe.user?.id || init_data_unsafe.user_id || null;
+        const isAdm = !!(uid && ADMIN_CHAT_IDS.includes(Number(uid)));
+        console.log('[check_admin] using unsafe init_data fallback, uid=', uid);
+        return res.json({ ok:true, isAdmin: isAdm, user_id: uid, unsafe: true });
+      }catch(e){ /* ignore parse errors below */ }
+    }
+
+    return res.json({ ok:false, isAdmin:false });
   }catch(e){ console.error('check_admin error', e.message); return res.status(500).json({ ok:false }); }
 });
 
