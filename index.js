@@ -356,24 +356,6 @@ const ALLOWED_ORIGINS = [
   'https://web.telegram.org/a'                 // вариант подпути
 ].filter(Boolean);
 
-app.use(cors({
-  origin: (origin, cb) => {
-    // Разрешаем без Origin (например, curl, мобильные webview)
-    if (!origin) return cb(null, true);
-    // Разрешаем, если точное совпадение
-    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-    // Дополнительно — пропустим, если это ровно фронт Render (на случай www/слэшей)
-    try {
-      const u = new URL(origin);
-      if (ALLOWED_ORIGINS.some(a => a && new URL(a).host === u.host)) {
-        return cb(null, true);
-      }
-    } catch {}
-    return cb(new Error(`CORS blocked for origin ${origin}`));
-  },
-  methods: ['GET','POST','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type'],
-}));
 const multer = require('multer');
 
 function ensureDir(p){ try{ fs.mkdirSync(p, { recursive: true }); }catch(e){} }
@@ -705,7 +687,7 @@ app.get('/check_admin', async (req, res) => {
       .split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
     const isAdmin = adminIds.includes(String(uid));
     log('check_admin', `Admin check for ${uid}: ${isAdmin}`);
-    return res.json({ ok: true, admin: isAdmin });
+    return res.json({ ok: true, isAdmin: isAdmin, admin: isAdmin });
   } catch (e) {
     err('check_admin', e);
     return res.status(500).json({ ok: false, error: e.message });
