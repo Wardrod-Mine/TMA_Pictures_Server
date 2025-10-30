@@ -502,14 +502,9 @@ function loadProductsFile(){
   return [];
 }
 
-log('products', 'Upserting product:', product.id, 'title:', product.title);
-
 function saveProductsFile(list){
   try{ fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(list, null, 2), 'utf8'); return true; }catch(e){ console.error('saveProductsFile error', e.message); return false; }
 }
-
-const ok = saveProductsFile(list);
-log('products', `File write ${ok ? 'OK' : 'FAIL'}. Total products: ${list.length}`);
 
 // --- GitHub integration helpers (optional) --------------------------------
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
