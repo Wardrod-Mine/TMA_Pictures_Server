@@ -337,41 +337,41 @@ const upload = multer({ storage });
 app.post('/upload-image', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
-      warn('upload', 'No file provided');
+      warn('upload', 'no_file');
       return res.status(400).json({ ok: false, error: 'no_file' });
     }
+    const cardId = (req.body.cardId || req.query.cardId || 'misc')
+      .replace(/[^a-zA-Z0-9_\-]/g, '_');
 
-    log('upload', 'Received file:', req.file.originalname);
+    log('upload', 'file:', req.file.originalname, 'cardId:', cardId);
 
-    const cardId = req.body.cardId || 'uncategorized';
-    const localDir = path.join(__dirname, 'assets', cardId);
-    fs.mkdirSync(localDir, { recursive: true });
-    const filePath = req.file.path; // multer уже сохранил файл
-    let uploadRes = null;
-
+    // req.file.path уже создан multer.diskStorage
+    let result = null;
     if (process.env.CLOUDINARY_URL) {
       try {
-        uploadRes = await cloudinary.uploader.upload(filePath, {
+        result = await cloudinary.uploader.upload(req.file.path, {
           folder: `tma_cards/${cardId}`,
+          use_filename: true,
+          unique_filename: false,
           resource_type: 'image'
         });
-        log('upload', 'Uploaded to Cloudinary:', uploadRes?.secure_url);
-      } catch (errUpload) {
-        err('upload', 'Cloudinary error:', errUpload.message);
+        log('upload', 'cloudinary:', result.secure_url);
+      } catch (e) {
+        err('upload', 'cloudinary:', e.message);
       }
     }
 
+    const rel = `/assets/${cardId}/${path.basename(req.file.path)}`;
+    const url = result?.secure_url || (FRONTEND_URL ? FRONTEND_URL.replace(/\/$/,'') + rel : rel);
+    const pathOrPublicId = result?.public_id || rel;
 
-    res.json({
-      ok: true,
-      url: uploadRes?.secure_url || `/assets/${cardId}/${req.file.originalname}`,
-      path: uploadRes?.public_id || filePath
-    });
+    return res.json({ ok: true, url, path: pathOrPublicId });
   } catch (e) {
-    err('upload', e);
-    res.status(500).json({ ok: false, error: e.message });
+    err('upload', e.message);
+    return res.status(500).json({ ok: false, error: e.message });
   }
 });
+
 
 
 function parseBtn(line) {
@@ -624,34 +624,35 @@ app.get('/check_admin', async (req, res) => {
   try {
     const init_data = req.query.init_data;
     const unsafe = req.query.unsafe === 'true';
-    const v = verifyInitData(init_data); // возвращает { ok:true, data, user_id } или null
 
+    const v = verifyInitData(init_data);
     let uid = null;
     if (v) {
-      // user_id напрямую или из поля user (строка JSON в initData)
-      uid = v.user_id ?? (v.data?.user ? JSON.parse(v.data.user).id : null) ?? v.data?.user_id ?? null;
+      uid = v.user_id
+        ?? (v.data?.user ? JSON.parse(v.data.user).id : null)
+        ?? v.data?.user_id
+        ?? null;
       log('check_admin', 'Verified uid:', uid);
     } else {
       warn('check_admin', 'Invalid init_data, fallback:', unsafe);
     }
 
     if (!uid && process.env.ALLOW_UNSAFE_ADMIN === 'true' && unsafe) {
-      log('check_admin', 'Using UNSAFE admin fallback.');
+      log('check_admin', 'Using UNSAFE admin fallback');
       return res.json({ ok: true, admin: true, unsafe: true });
     }
-
     if (!uid) return res.status(403).json({ ok: false, error: 'invalid_init_data' });
 
-    const adminIds = (process.env.ADMIN_CHAT_IDS || '').split(',').map(s => s.trim());
+    const adminIds = (process.env.ADMIN_CHAT_IDS || '')
+      .split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
     const isAdmin = adminIds.includes(String(uid));
     log('check_admin', `Admin check for ${uid}: ${isAdmin}`);
-    res.json({ ok: true, admin: isAdmin });
+    return res.json({ ok: true, admin: isAdmin });
   } catch (e) {
     err('check_admin', e);
-    res.status(500).json({ ok: false, error: e.message });
+    return res.status(500).json({ ok: false, error: e.message });
   }
 });
-
 
 app.get('/products', (req, res) => {
   try{
@@ -666,43 +667,50 @@ app.post('/products', async (req, res) => {
     const { init_data, product } = req.body;
     log('products', 'Incoming product:', product?.id || '(no id)');
 
+    // Разбираем init_data, достаём user_id
     const v = verifyInitData(init_data);
     let uid = null;
     if (v) {
-      uid = v.user_id ?? (v.data?.user ? JSON.parse(v.data.user).id : null) ?? v.data?.user_id ?? null;
+      uid = v.user_id
+        ?? (v.data?.user ? JSON.parse(v.data.user).id : null)
+        ?? v.data?.user_id
+        ?? null;
+      log('products', 'Verified uid:', uid);
+    } else {
+      warn('products', 'Invalid init_data');
     }
+
+    // Fallback для разработки
     if (!uid && process.env.ALLOW_UNSAFE_ADMIN === 'true') {
-      log('products', 'InitData invalid, using UNSAFE fallback.');
+      log('products', 'InitData invalid, using UNSAFE fallback');
       uid = 'unsafe-admin';
     }
     if (!uid) {
-      warn('products', 'Invalid init_data, rejecting request.');
       return res.status(403).json({ ok: false, error: 'invalid_init_data' });
     }
 
-    const adminIds = (process.env.ADMIN_CHAT_IDS || '').split(',').map(s => s.trim());
+    // Проверка админа
+    const adminIds = (process.env.ADMIN_CHAT_IDS || '')
+      .split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
     const isAdmin = adminIds.includes(String(uid)) || uid === 'unsafe-admin';
     if (!isAdmin) {
-      warn('products', `User ${uid} not in ADMIN_CHAT_IDS`);
+      warn('products', `User ${uid} is not admin`);
       return res.status(403).json({ ok: false, error: 'not_admin' });
     }
 
-    if (!isAdmin) {
-      warn('products', `User ${user.id} not in ADMIN_CHAT_IDS`);
-      return res.status(403).json({ ok: false, error: 'not_admin' });
-    }
-
+    // Сохранение карточки
     const list = loadProductsFile();
-    const idx = list.findIndex(p => p.id === product.id);
-    if (idx >= 0) list[idx] = product;
-    else list.push(product);
-    saveProductsFile(list);
+    const i = list.findIndex(p => p.id === product.id);
+    if (i >= 0) list[i] = product; else list.push(product);
 
-    log('products', `Saved product: ${product.id}, total now: ${list.length}`);
-    res.json({ ok: true });
+    log('products', 'Upserting product:', product.id, 'title:', product.title);
+    const ok = saveProductsFile(list);
+    log('products', `File write ${ok ? 'OK' : 'FAIL'}. Total: ${list.length}`);
+
+    return res.json({ ok: true });
   } catch (e) {
     err('products', e);
-    res.status(500).json({ ok: false, error: e.message });
+    return res.status(500).json({ ok: false, error: e.message });
   }
 });
 
