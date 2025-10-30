@@ -677,15 +677,17 @@ app.get('/check_admin', async (req, res) => {
       warn('check_admin', 'Invalid init_data, fallback:', unsafe);
     }
 
-    if (!uid && process.env.ALLOW_UNSAFE_ADMIN === 'true' && unsafe) {
-      log('check_admin', 'Using UNSAFE admin fallback');
-      return res.json({ ok: true, admin: true, unsafe: true });
-    }
+  if (!uid && process.env.ALLOW_UNSAFE_ADMIN === 'true' && unsafe) {
+    // БОЛЬШЕ НЕ ДОВЕРЯЕМ небезопасному режиму — жёсткий отказ
+    return res.status(403).json({ ok: false, error: 'invalid_init_data_unsafe' });
+  }
+
     if (!uid) return res.status(403).json({ ok: false, error: 'invalid_init_data' });
 
     const adminIds = (process.env.ADMIN_CHAT_IDS || '')
       .split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
     const isAdmin = adminIds.includes(String(uid));
+    
     log('check_admin', `Admin check for ${uid}: ${isAdmin}`);
     return res.json({ ok: true, isAdmin: isAdmin, admin: isAdmin });
   } catch (e) {
