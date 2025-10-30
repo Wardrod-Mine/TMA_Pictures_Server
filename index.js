@@ -2,14 +2,13 @@ require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const { message } = require('telegraf/filters');
 const express = require('express');
-const cors = require('cors'); // ← реально используем
+const cors = require('cors');
 const app = express();
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-// serve static assets (images uploaded)
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 const CHANNEL_ID = process.env.CHANNEL_ID || null;
@@ -20,9 +19,8 @@ const FRONTEND_URL = process.env.FRONTEND_URL;
 const POST_BUTTON_TEXT = process.env.POST_BUTTON_TEXT || 'Открыть';
 const POST_BUTTON_URL  = process.env.POST_BUTTON_URL  || FRONTEND_URL || 'https://example.com';
 
-// === GitHub storage for images ===
 const GITHUB_BRANCH = process.env.GITHUB_ASSETS_BRANCH || process.env.GITHUB_COMMIT_BRANCH || 'main';
-const GITHUB_ASSETS_BASE = process.env.GITHUB_ASSETS_BASE || 'assets'; // папка в репо для картинок
+const GITHUB_ASSETS_BASE = process.env.GITHUB_ASSETS_BASE || 'assets'; 
 
 const allowList = [process.env.FRONTEND_URL, 'https://web.telegram.org', 'https://web.telegram.org/a'].filter(Boolean);
 app.use(cors({
@@ -53,7 +51,6 @@ async function githubUpsertFile(repoPath, contentBuffer, message) {
   const [owner, repo] = GITHUB_REPO.split('/');
   const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(repoPath)}`;
 
-  // Проверим, существует ли файл — чтобы передать sha при обновлении
   let sha = undefined;
   try {
     const headRes = await fetch(apiBase, { headers: ghHeaders() });
@@ -81,12 +78,10 @@ async function githubUpsertFile(repoPath, contentBuffer, message) {
     throw new Error(`GitHub PUT failed: ${putRes.status} ${putRes.statusText} ${e}`);
   }
   const j = await putRes.json();
-  // Сформируем raw-URL (моментально доступен)
   const rawUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${repoPath}`;
   return { ok: true, rawUrl, sha: j.content?.sha };
 }
 
-// 🧩 --- Diagnostic logging helper ---
 function log(tag, ...msg) {
   const t = new Date().toISOString().split('T')[1].split('.')[0];
   console.log(`[${t}] [${tag}]`, ...msg);
@@ -116,7 +111,7 @@ if (!ADMIN_CHAT_IDS.length) console.warn('⚠️ ADMIN_CHAT_IDS пуст — /le
 
 const bot = new Telegraf(BOT_TOKEN);
 
-// === утилиты ===
+// ========================= утилиты ==========================
 const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const fmt = (v) => v ? esc(v) : '—';
 const who = (u) => {
@@ -150,44 +145,34 @@ async function notifyAdmins(ctx, html) {
   return delivered;
 }
 
-// === /start ===
-// bot.start(async (ctx) => {
-//   await ctx.reply('📂 Добро пожаловать! Нажмите кнопку ниже, чтобы открыть каталог услуг:', {
-//     reply_markup: {
-//       inline_keyboard: [[{ text: 'Каталог', web_app: { url: FRONTEND_URL } }]]
-//     }
-//   });
+// ======================== /start =========================
+bot.start(async (ctx) => {
+  await ctx.reply('📂 Добро пожаловать! Нажмите кнопку ниже, чтобы открыть каталог услуг:', {
+    reply_markup: {
+      inline_keyboard: [[{ text: 'Каталог', web_app: { url: FRONTEND_URL } }]]
+    }
+  });
 
-//   if (ctx.chat?.type === 'private' && isAdmin(ctx.from?.id)) {
-//     await ctx.reply(
-//       [
-//         '🛠 <b>Публикация поста</b>',
-//         '• Напишите текст поста и отправьте:',
-//         '<code>/post Текст поста</code>',
-//         '• Или ответьте командой <code>/post</code> на сообщение с текстом/фото+подписью.',
-//         '',
-//         `Кнопка добавляется автоматически: «${POST_BUTTON_TEXT}» → ${POST_BUTTON_URL}`,
-//         CHANNEL_ID
-//           ? `По умолчанию посты уходят в: <code>${CHANNEL_ID}</code>`
-//           : 'Без CHANNEL_ID пост уйдёт в текущий чат.'
-//       ].join('\n'),
-//       { parse_mode: 'HTML', disable_web_page_preview: true }
-//     );
-//   }
-// });
-
-// === /start ===
-bot.command('start', ctx => ctx.reply('Добро пожаловать!', {
-  reply_markup: {
-    inline_keyboard: [[
-      { text: 'Каталог', web_app: { url: process.env.FRONTEND_URL } }
-    ]]
+  if (ctx.chat?.type === 'private' && isAdmin(ctx.from?.id)) {
+    await ctx.reply(
+      [
+        '🛠 <b>Публикация поста</b>',
+        '• Напишите текст поста и отправьте:',
+        '<code>/post Текст поста</code>',
+        '• Или ответьте командой <code>/post</code> на сообщение с текстом/фото+подписью.',
+        '',
+        `Кнопка добавляется автоматически: «${POST_BUTTON_TEXT}» → ${POST_BUTTON_URL}`,
+        CHANNEL_ID
+          ? `По умолчанию посты уходят в: <code>${CHANNEL_ID}</code>`
+          : 'Без CHANNEL_ID пост уйдёт в текущий чат.'
+      ].join('\n'),
+      { parse_mode: 'HTML', disable_web_page_preview: true }
+    );
   }
-}));
+});
 
 
-
-// === test_admin ===
+// ======================== test_admin ============================
 bot.command('test_admin', async (ctx) => {
   const html = `<b>🔔 Тестовое сообщение</b>\n\nОт: ${who(ctx.from)}`;
   const ok = await notifyAdmins(ctx, html);
@@ -224,7 +209,6 @@ bot.command('post_test', async (ctx) => {
     );
     ctx.reply(`✅ Ушло в ${target}${CHANNEL_THREAD_ID ? ` (топик ${CHANNEL_THREAD_ID})` : ''}`);
   } catch (e) {
-    // покажем точную причину Телеграма
     ctx.reply(`❌ Не отправилось: ${e.description || e.message}`);
   }
 });
@@ -233,7 +217,7 @@ bot.command('bind', (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.reply('🚫');
   const fwd = ctx.message.reply_to_message?.forward_from_chat;
   if (!fwd) return ctx.reply('Сделайте /bind ответом на ПЕРЕСЛАННОЕ из канала сообщение.');
-  RUNTIME_CHANNEL_ID = fwd.id; // например -100xxxxxxxxxx
+  RUNTIME_CHANNEL_ID = fwd.id; 
   ctx.reply(`✅ Привязал канал: ${RUNTIME_CHANNEL_ID}`);
 });
 
@@ -252,14 +236,11 @@ bot.command('post', async (ctx) => {
       return ctx.reply('🚫 Недостаточно прав для публикации');
     }
 
-    // 1) текст прямо в команде
     let postText = ctx.message.text.replace(/^\/post(@\w+)?\s*/i, '').trim();
 
-    // 2) или берём из реплая (text/caption)
     const reply = ctx.message.reply_to_message;
     if (!postText && reply) postText = (reply.caption || reply.text || '').trim();
 
-    // 3) фото из реплая (если есть)
     let photoFileId = null;
     if (reply?.photo?.length) {
       const largest = reply.photo.reduce((a, b) => (a.file_size || 0) > (b.file_size || 0) ? a : b);
@@ -285,11 +266,9 @@ bot.command('post', async (ctx) => {
     console.error('post error:', e);
     return ctx.reply('❌ Ошибка отправки: ' + (e.description || e.message));
   }
-});
+}); 
 
-  
-
-// === приём данных из WebApp ===
+// ================ приём данных из WebApp ==================
 bot.on(message('web_app_data'), async (ctx) => {
   console.log('\n==== [web_app_data received] ====');
   console.log('[from.id]:', ctx.from?.id, 'username:', ctx.from?.username);
@@ -351,9 +330,9 @@ bot.on(message('web_app_data'), async (ctx) => {
 app.use(express.json());
 app.use(bot.webhookCallback('/bot'));
 const ALLOWED_ORIGINS = [
-  process.env.FRONTEND_URL,                    // https://tma-pictures-front.onrender.com
-  'https://web.telegram.org',                  // Telegram Web
-  'https://web.telegram.org/a'                 // вариант подпути
+  process.env.FRONTEND_URL,             
+  'https://web.telegram.org',     
+  'https://web.telegram.org/a'               
 ].filter(Boolean);
 
 const multer = require('multer');
@@ -373,7 +352,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// POST /upload-image?cardId=product_id
 app.post('/upload-image', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
@@ -381,12 +359,10 @@ app.post('/upload-image', upload.single('image'), async (req, res) => {
       return res.status(400).json({ ok: false, error: 'no_file' });
     }
 
-    // cardId нужен для папки
     const cardId = (req.body.cardId || req.query.cardId || 'misc')
       .toString().trim().replace(/[^a-zA-Z0-9_\-]/g, '_') || 'misc';
     const fileName = req.file.originalname.replace(/[^\w.\-]/g, '_');
 
-    // 1) локально сохраняем (на всякий случай; не критично)
     const localDir = path.join(__dirname, 'assets', cardId);
     fs.mkdirSync(localDir, { recursive: true });
     const localPath = path.join(localDir, fileName);
@@ -396,7 +372,6 @@ app.post('/upload-image', upload.single('image'), async (req, res) => {
       fs.copyFileSync(req.file.path, localPath);
     }
 
-    // 2) если настроен GitHub — коммитим туда и отдаём raw-URL
     if (GITHUB_REPO && GITHUB_TOKEN) {
       const repoPath = `${GITHUB_ASSETS_BASE}/${cardId}/${fileName}`;
       const buf = req.file.buffer
@@ -407,7 +382,6 @@ app.post('/upload-image', upload.single('image'), async (req, res) => {
       return res.json({ ok: true, url: r.rawUrl, path: repoPath, storage: 'github' });
     }
 
-    // 3) иначе — отдадим локальный URL через сервер
     const rel = `/assets/${cardId}/${fileName}`;
     const abs = (APP_URL || '').replace(/\/$/,'') + rel;
     log('upload', 'Local asset saved:', abs);
@@ -490,12 +464,12 @@ async function sendPost({ chatId, threadId, text, photoFileId }, tg) {
   };
 
   try {
-    return await tryOnce(true);   // пробуем с threadId (если задан)
+    return await tryOnce(true);
   } catch (e) {
     const m = String(e.description || e.message || '').toLowerCase();
     const threadProblem = m.includes('message_thread_id') || m.includes('topic') || m.includes('forum') || m.includes('thread');
     if (threadId && threadProblem) {
-      return await tryOnce(false); // канал без топиков — повтор без threadId
+      return await tryOnce(false); 
     }
     throw e;
   }
@@ -535,12 +509,10 @@ app.listen(PORT, async () => {
       console.error('❌ Failed to set webhook automatically:', e.message);
     }
   }
-  // Try to sync products from GitHub if configured
   try{ await syncProductsFromGitHubToLocal(); }catch(e){ /* ignore */ }
 });
 
-// ---- Доп. endpoints: проверка admin и CRUD для карточек ----
-
+// ===============================Локальное хранилище для products.json ===============================
 const PRODUCTS_FILE = path.join(__dirname, 'products.json');
 function loadProductsFile(){
   try{ if (fs.existsSync(PRODUCTS_FILE)) return JSON.parse(fs.readFileSync(PRODUCTS_FILE,'utf8')); }catch(e){ console.warn('loadProductsFile error', e.message); }
@@ -551,7 +523,7 @@ function saveProductsFile(list){
   try{ fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(list, null, 2), 'utf8'); return true; }catch(e){ console.error('saveProductsFile error', e.message); return false; }
 }
 
-// --- GitHub integration helpers (optional) --------------------------------
+// ===============================GitHub интеграция для products.json ===============================
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
 const GITHUB_REPO = process.env.GITHUB_REPO || '';
 const GITHUB_PRODUCTS_PATH = process.env.GITHUB_PRODUCTS_PATH || 'products.json';
@@ -590,7 +562,6 @@ async function githubPutFileContent(textContent, sha){
   }catch(e){ console.warn('githubPutFileContent error', e.message); return { ok:false, error: e.message }; }
 }
 
-// Attempt to fetch products.json from GitHub and save locally (run on startup)
 async function syncProductsFromGitHubToLocal(){
   try{
     const f = await githubGetFileContent();
@@ -620,7 +591,6 @@ function verifyInitData(initDataString){
     const hmac = crypto.createHmac('sha256', secret_key).update(data_check_string).digest('hex');
     if (hmac !== hash) return null;
 
-    // return parsed user id if present
     const user_id = kv.user ? (JSON.parse(kv.user).id || null) : (kv.user_id ? Number(kv.user_id) : null);
     return { ok:true, data: kv, user_id };
   }catch(e){ console.warn('verifyInitData error', e.message); return null; }
@@ -629,7 +599,6 @@ function verifyInitData(initDataString){
 app.post('/check_admin', express.json(), (req, res) => {
   try{
     const { init_data, init_data_unsafe } = req.body || {};
-    // lightweight logging for debugging (do not log full tokens)
     try{
       const keys = Object.keys(req.body || {});
       console.log('[check_admin] received keys:', keys);
@@ -638,7 +607,6 @@ app.post('/check_admin', express.json(), (req, res) => {
     }catch(e){ /* ignore logging errors */ }
     const ALLOW_UNSAFE = (process.env.ALLOW_UNSAFE_ADMIN === 'true');
 
-    // Try signed init_data first
     const v = verifyInitData(init_data);
     if (v) {
       const uid = v.user_id || (v.data && (v.data.user_id || v.data.user && JSON.parse(v.data.user).id));
@@ -646,7 +614,6 @@ app.post('/check_admin', express.json(), (req, res) => {
       return res.json({ ok:true, isAdmin: isAdm, user_id: uid, unsafe: false });
     }
 
-    // Fallback: if allowed by env, accept unsafe init data object (useful for desktop / debug)
     if (!v && init_data_unsafe && ALLOW_UNSAFE) {
       try{
         const uid = init_data_unsafe.user?.id || init_data_unsafe.user_id || null;
@@ -678,7 +645,6 @@ app.get('/check_admin', async (req, res) => {
     }
 
   if (!uid && process.env.ALLOW_UNSAFE_ADMIN === 'true' && unsafe) {
-    // БОЛЬШЕ НЕ ДОВЕРЯЕМ небезопасному режиму — жёсткий отказ
     return res.status(403).json({ ok: false, error: 'invalid_init_data_unsafe' });
   }
 
@@ -687,7 +653,7 @@ app.get('/check_admin', async (req, res) => {
     const adminIds = (process.env.ADMIN_CHAT_IDS || '')
       .split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
     const isAdmin = adminIds.includes(String(uid));
-    
+
     log('check_admin', `Admin check for ${uid}: ${isAdmin}`);
     return res.json({ ok: true, isAdmin: isAdmin, admin: isAdmin });
   } catch (e) {
@@ -703,13 +669,11 @@ app.get('/products', (req, res) => {
   }catch(e){ console.error('GET /products error', e.message); return res.status(500).json({ ok:false }); }
 });
 
-// protected upsert product
 app.post('/products', async (req, res) => {
   try {
     const { init_data, product } = req.body;
     log('products', 'Incoming product:', product?.id || '(no id)');
 
-    // Разбираем init_data, достаём user_id
     const v = verifyInitData(init_data);
     let uid = null;
     if (v) {
@@ -722,7 +686,6 @@ app.post('/products', async (req, res) => {
       warn('products', 'Invalid init_data');
     }
 
-    // Fallback для разработки
     if (!uid && process.env.ALLOW_UNSAFE_ADMIN === 'true') {
       log('products', 'InitData invalid, using UNSAFE fallback');
       uid = 'unsafe-admin';
@@ -731,7 +694,6 @@ app.post('/products', async (req, res) => {
       return res.status(403).json({ ok: false, error: 'invalid_init_data' });
     }
 
-    // Проверка админа
     const adminIds = (process.env.ADMIN_CHAT_IDS || '')
       .split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
     const isAdmin = adminIds.includes(String(uid)) || uid === 'unsafe-admin';
@@ -740,7 +702,6 @@ app.post('/products', async (req, res) => {
       return res.status(403).json({ ok: false, error: 'not_admin' });
     }
 
-    // Сохранение карточки
     const list = loadProductsFile();
     const i = list.findIndex(p => p.id === product.id);
     if (i >= 0) list[i] = product; else list.push(product);
@@ -774,7 +735,7 @@ app.delete('/products/:id', express.json(), (req, res) => {
   }catch(e){ console.error('DELETE /products error', e.message); return res.status(500).json({ ok:false }); }
 });
 
-// PATCH /products/:id - partial update
+// ======================== Редактирование карточек =========================
 app.patch('/products/:id', express.json(), (req, res) => {
   try{
     const { init_data, patch } = req.body || {};
@@ -790,7 +751,6 @@ app.patch('/products/:id', express.json(), (req, res) => {
     const idx = list.findIndex(x => x.id === id);
     if (idx === -1) return res.status(404).json({ ok:false, error:'not_found' });
 
-    // merge allowed fields
     const allowed = ['title','shortDescription','short','description','long','imgs','link'];
     const target = list[idx];
     for (const k of Object.keys(patch)) {
@@ -799,7 +759,6 @@ app.patch('/products/:id', express.json(), (req, res) => {
     target.updatedAt = (new Date()).toISOString();
     saveProductsFile(list);
 
-    // async push to GitHub
     (async ()=>{
       try{ const txt = JSON.stringify(list, null, 2); const f = await githubGetFileContent(); const sha = f && f.sha ? f.sha : undefined; const p = await githubPutFileContent(txt, sha); if (!p.ok) console.warn('github push failed', p.error); else console.log('products.json pushed to GitHub'); }catch(e){ console.warn('push products to github error', e.message); }
     })();
@@ -808,7 +767,7 @@ app.patch('/products/:id', express.json(), (req, res) => {
   }catch(e){ console.error('PATCH /products/:id error', e.message); return res.status(500).json({ ok:false, error: e.message }); }
 });
 
-// DELETE /images - delete image from Cloudinary or local storage and optionally remove from product
+// ======================== Удаление изображений =========================
 app.delete('/images', express.json(), async (req, res) => {
   try{
     const { init_data, public_id, path: imgPath, productId } = req.body || {};
@@ -819,7 +778,6 @@ app.delete('/images', express.json(), async (req, res) => {
 
     let deleted = false;
 
-    // Try Cloudinary delete if public_id provided and cloudinary configured
     if (public_id && cloudinary && cloudinary.uploader && process.env.CLOUDINARY_URL) {
       try{
         const r = await cloudinary.uploader.destroy(public_id);
@@ -828,7 +786,6 @@ app.delete('/images', express.json(), async (req, res) => {
       }catch(e){ console.warn('cloudinary destroy failed', e.message); }
     }
 
-    // If path provided and points to /assets, try local fs delete
     if (!deleted && imgPath && String(imgPath).startsWith('/assets/')) {
       try{
         const rel = imgPath.replace(/^\//,'');
@@ -837,7 +794,6 @@ app.delete('/images', express.json(), async (req, res) => {
       }catch(e){ console.warn('local delete failed', e.message); }
     }
 
-    // If productId provided, remove image entries matching public_id or url
     if (productId) {
       try{
         const list = loadProductsFile();
@@ -854,7 +810,6 @@ app.delete('/images', express.json(), async (req, res) => {
           prod.imgs = imgs;
           prod.updatedAt = (new Date()).toISOString();
           saveProductsFile(list);
-          // push to GitHub async
           (async ()=>{ try{ const txt = JSON.stringify(list, null, 2); const f = await githubGetFileContent(); const sha = f && f.sha ? f.sha : undefined; const p = await githubPutFileContent(txt, sha); if (!p.ok) console.warn('github push failed', p.error); else console.log('products.json pushed to GitHub'); }catch(e){ console.warn('push products to github error', e.message); } })();
         }
       }catch(e){ console.warn('remove image from product failed', e.message); }
