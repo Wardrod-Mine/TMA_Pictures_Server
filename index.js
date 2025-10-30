@@ -20,6 +20,72 @@ const FRONTEND_URL = process.env.FRONTEND_URL;
 const POST_BUTTON_TEXT = process.env.POST_BUTTON_TEXT || 'Открыть';
 const POST_BUTTON_URL  = process.env.POST_BUTTON_URL  || FRONTEND_URL || 'https://example.com';
 
+// === GitHub storage for images ===
+const GITHUB_BRANCH = process.env.GITHUB_ASSETS_BRANCH || process.env.GITHUB_COMMIT_BRANCH || 'main';
+const GITHUB_ASSETS_BASE = process.env.GITHUB_ASSETS_BASE || 'assets'; // папка в репо для картинок
+
+const allowList = [process.env.FRONTEND_URL, 'https://web.telegram.org', 'https://web.telegram.org/a'].filter(Boolean);
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    try {
+      const oh = new URL(origin).host;
+      const ok = allowList.some(a => a && new URL(a).host === oh);
+      return cb(ok ? null : new Error(`CORS blocked for ${origin}`), ok);
+    } catch { return cb(new Error(`CORS parse fail ${origin}`)); }
+  },
+  methods: ['GET','POST','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  optionsSuccessStatus: 204
+}));
+app.options('*', cors());
+
+function ghHeaders() {
+  return {
+    'Authorization': `Bearer ${GITHUB_TOKEN}`,
+    'Accept': 'application/vnd.github+json',
+    'User-Agent': 'tma-pictures-server'
+  };
+}
+
+async function githubUpsertFile(repoPath, contentBuffer, message) {
+  if (!GITHUB_REPO || !GITHUB_TOKEN) throw new Error('GitHub storage is not configured');
+  const [owner, repo] = GITHUB_REPO.split('/');
+  const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(repoPath)}`;
+
+  // Проверим, существует ли файл — чтобы передать sha при обновлении
+  let sha = undefined;
+  try {
+    const headRes = await fetch(apiBase, { headers: ghHeaders() });
+    if (headRes.ok) {
+      const headJson = await headRes.json();
+      if (headJson && headJson.sha) sha = headJson.sha;
+    }
+  } catch {}
+
+  const payload = {
+    message: message || `Upload ${repoPath}`,
+    content: contentBuffer.toString('base64'),
+    branch: GITHUB_BRANCH,
+    sha
+  };
+
+  const putRes = await fetch(apiBase, {
+    method: 'PUT',
+    headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!putRes.ok) {
+    const e = await putRes.text();
+    throw new Error(`GitHub PUT failed: ${putRes.status} ${putRes.statusText} ${e}`);
+  }
+  const j = await putRes.json();
+  // Сформируем raw-URL (моментально доступен)
+  const rawUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${repoPath}`;
+  return { ok: true, rawUrl, sha: j.content?.sha };
+}
+
 // 🧩 --- Diagnostic logging helper ---
 function log(tag, ...msg) {
   const t = new Date().toISOString().split('T')[1].split('.')[0];
@@ -308,15 +374,7 @@ app.use(cors({
   methods: ['GET','POST','PATCH','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type'],
 }));
-
-
 const multer = require('multer');
-
-const cloudinary = require('cloudinary').v2;
-if (process.env.CLOUDINARY_URL) {
-  cloudinary.config({ secure: true }); 
-}
-
 
 function ensureDir(p){ try{ fs.mkdirSync(p, { recursive: true }); }catch(e){} }
 const storage = multer.diskStorage({
@@ -340,39 +398,44 @@ app.post('/upload-image', upload.single('image'), async (req, res) => {
       warn('upload', 'no_file');
       return res.status(400).json({ ok: false, error: 'no_file' });
     }
+
+    // cardId нужен для папки
     const cardId = (req.body.cardId || req.query.cardId || 'misc')
-      .replace(/[^a-zA-Z0-9_\-]/g, '_');
+      .toString().trim().replace(/[^a-zA-Z0-9_\-]/g, '_') || 'misc';
+    const fileName = req.file.originalname.replace(/[^\w.\-]/g, '_');
 
-    log('upload', 'file:', req.file.originalname, 'cardId:', cardId);
-
-    // req.file.path уже создан multer.diskStorage
-    let result = null;
-    if (process.env.CLOUDINARY_URL) {
-      try {
-        result = await cloudinary.uploader.upload(req.file.path, {
-          folder: `tma_cards/${cardId}`,
-          use_filename: true,
-          unique_filename: false,
-          resource_type: 'image'
-        });
-        log('upload', 'cloudinary:', result.secure_url);
-      } catch (e) {
-        err('upload', 'cloudinary:', e.message);
-      }
+    // 1) локально сохраняем (на всякий случай; не критично)
+    const localDir = path.join(__dirname, 'assets', cardId);
+    fs.mkdirSync(localDir, { recursive: true });
+    const localPath = path.join(localDir, fileName);
+    if (req.file.buffer) {
+      fs.writeFileSync(localPath, req.file.buffer);
+    } else if (req.file.path) {
+      fs.copyFileSync(req.file.path, localPath);
     }
 
-    const rel = `/assets/${cardId}/${path.basename(req.file.path)}`;
-    const url = result?.secure_url || (FRONTEND_URL ? FRONTEND_URL.replace(/\/$/,'') + rel : rel);
-    const pathOrPublicId = result?.public_id || rel;
+    // 2) если настроен GitHub — коммитим туда и отдаём raw-URL
+    if (GITHUB_REPO && GITHUB_TOKEN) {
+      const repoPath = `${GITHUB_ASSETS_BASE}/${cardId}/${fileName}`;
+      const buf = req.file.buffer
+        ? req.file.buffer
+        : fs.readFileSync(localPath);
+      const r = await githubUpsertFile(repoPath, buf, `Asset: ${cardId}/${fileName}`);
+      log('upload', 'GitHub asset saved:', r.rawUrl);
+      return res.json({ ok: true, url: r.rawUrl, path: repoPath, storage: 'github' });
+    }
 
-    return res.json({ ok: true, url, path: pathOrPublicId });
+    // 3) иначе — отдадим локальный URL через сервер
+    const rel = `/assets/${cardId}/${fileName}`;
+    const abs = (APP_URL || '').replace(/\/$/,'') + rel;
+    log('upload', 'Local asset saved:', abs);
+    return res.json({ ok: true, url: abs, path: rel, storage: 'local' });
+
   } catch (e) {
     err('upload', e.message);
     return res.status(500).json({ ok: false, error: e.message });
   }
 });
-
-
 
 function parseBtn(line) {
   const [t, u] = (line || '').split('|');
