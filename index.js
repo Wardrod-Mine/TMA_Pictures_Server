@@ -20,6 +20,19 @@ const FRONTEND_URL = process.env.FRONTEND_URL;
 const POST_BUTTON_TEXT = process.env.POST_BUTTON_TEXT || 'Открыть';
 const POST_BUTTON_URL  = process.env.POST_BUTTON_URL  || FRONTEND_URL || 'https://example.com';
 
+// 🧩 --- Diagnostic logging helper ---
+function log(tag, ...msg) {
+  const t = new Date().toISOString().split('T')[1].split('.')[0];
+  console.log(`[${t}] [${tag}]`, ...msg);
+}
+function warn(tag, ...msg) {
+  const t = new Date().toISOString().split('T')[1].split('.')[0];
+  console.warn(`[${t}] [WARN:${tag}]`, ...msg);
+}
+function err(tag, ...msg) {
+  const t = new Date().toISOString().split('T')[1].split('.')[0];
+  console.error(`[${t}] [ERROR:${tag}]`, ...msg);
+}
 
 const ADMIN_CHAT_IDS = (process.env.ADMIN_CHAT_IDS || '')
   .split(/[,\s]+/)
@@ -29,6 +42,7 @@ const ADMIN_CHAT_IDS = (process.env.ADMIN_CHAT_IDS || '')
   .filter(Number.isFinite);
 
 const ADMIN_THREAD_ID = process.env.ADMIN_THREAD_ID ? Number(process.env.ADMIN_THREAD_ID) : null;
+
 
 if (!BOT_TOKEN) throw new Error('Нет BOT_TOKEN в .env');
 if (!APP_URL) console.warn('⚠️ APP_URL не задан — вебхук не установится');
@@ -71,31 +85,39 @@ async function notifyAdmins(ctx, html) {
 }
 
 // === /start ===
-bot.start(async (ctx) => {
-  await ctx.reply('📂 Добро пожаловать! Нажмите кнопку ниже, чтобы открыть каталог услуг:', {
-    reply_markup: {
-      inline_keyboard: [[{ text: 'Каталог', web_app: { url: FRONTEND_URL } }]]
-    }
-  });
+// bot.start(async (ctx) => {
+//   await ctx.reply('📂 Добро пожаловать! Нажмите кнопку ниже, чтобы открыть каталог услуг:', {
+//     reply_markup: {
+//       inline_keyboard: [[{ text: 'Каталог', web_app: { url: FRONTEND_URL } }]]
+//     }
+//   });
 
-  if (ctx.chat?.type === 'private' && isAdmin(ctx.from?.id)) {
-    await ctx.reply(
-      [
-        '🛠 <b>Публикация поста</b>',
-        '• Напишите текст поста и отправьте:',
-        '<code>/post Текст поста</code>',
-        '• Или ответьте командой <code>/post</code> на сообщение с текстом/фото+подписью.',
-        '',
-        `Кнопка добавляется автоматически: «${POST_BUTTON_TEXT}» → ${POST_BUTTON_URL}`,
-        CHANNEL_ID
-          ? `По умолчанию посты уходят в: <code>${CHANNEL_ID}</code>`
-          : 'Без CHANNEL_ID пост уйдёт в текущий чат.'
-      ].join('\n'),
-      { parse_mode: 'HTML', disable_web_page_preview: true }
-    );
+//   if (ctx.chat?.type === 'private' && isAdmin(ctx.from?.id)) {
+//     await ctx.reply(
+//       [
+//         '🛠 <b>Публикация поста</b>',
+//         '• Напишите текст поста и отправьте:',
+//         '<code>/post Текст поста</code>',
+//         '• Или ответьте командой <code>/post</code> на сообщение с текстом/фото+подписью.',
+//         '',
+//         `Кнопка добавляется автоматически: «${POST_BUTTON_TEXT}» → ${POST_BUTTON_URL}`,
+//         CHANNEL_ID
+//           ? `По умолчанию посты уходят в: <code>${CHANNEL_ID}</code>`
+//           : 'Без CHANNEL_ID пост уйдёт в текущий чат.'
+//       ].join('\n'),
+//       { parse_mode: 'HTML', disable_web_page_preview: true }
+//     );
+//   }
+// });
+
+// === /start ===
+bot.command('start', ctx => ctx.reply('Добро пожаловать!', {
+  reply_markup: {
+    inline_keyboard: [[
+      { text: 'Каталог', web_app: { url: process.env.FRONTEND_URL } }
+    ]]
   }
-});
-
+}));
 
 
 
@@ -288,13 +310,13 @@ app.use(cors({
 }));
 
 
-// --- image upload support (Cloudinary if configured, otherwise local storage) ---
 const multer = require('multer');
+
 const cloudinary = require('cloudinary').v2;
-// configure cloudinary from env if present
 if (process.env.CLOUDINARY_URL) {
-  cloudinary.config({ cloudinary_url: process.env.CLOUDINARY_URL });
+  cloudinary.config({ secure: true }); 
 }
+
 
 function ensureDir(p){ try{ fs.mkdirSync(p, { recursive: true }); }catch(e){} }
 const storage = multer.diskStorage({
@@ -313,24 +335,44 @@ const upload = multer({ storage });
 
 // POST /upload-image?cardId=product_id
 app.post('/upload-image', upload.single('image'), async (req, res) => {
-  try{
-    if (!req.file) return res.status(400).json({ ok:false, error:'no_file' });
-    const cardId = (req.body.cardId || req.query.cardId || 'misc').replace(/[^a-zA-Z0-9_\-]/g, '_');
-    // if cloudinary configured -> upload
-    if (cloudinary && cloudinary.config && process.env.CLOUDINARY_URL) {
-      try{
-        const folder = `tma_cards/${cardId}`;
-        const result = await cloudinary.uploader.upload(req.file.path, { folder, use_filename: true, unique_filename: false });
-        // remove local file after upload
-        try{ fs.unlinkSync(req.file.path); }catch(e){}
-        return res.json({ ok:true, url: result.secure_url, path: result.public_id });
-      }catch(e){ console.warn('cloud upload failed', e.message); }
+  try {
+    if (!req.file) {
+      warn('upload', 'No file provided');
+      return res.status(400).json({ ok: false, error: 'no_file' });
     }
-    // fallback: return local path
-    const rel = `/assets/${path.basename(path.dirname(req.file.path))}/${path.basename(req.file.path)}`;
-    return res.json({ ok:true, path: rel, url: (FRONTEND_URL ? (FRONTEND_URL.replace(/\/$/,'') + rel) : rel) });
-  }catch(e){ console.error('upload error', e.message); return res.status(500).json({ ok:false, error: e.message }); }
+
+    log('upload', 'Received file:', req.file.originalname);
+
+    const cardId = req.body.cardId || 'uncategorized';
+    const localDir = path.join(__dirname, 'assets', cardId);
+    fs.mkdirSync(localDir, { recursive: true });
+    const filePath = req.file.path; // multer уже сохранил файл
+    let uploadRes = null;
+
+    if (process.env.CLOUDINARY_URL) {
+      try {
+        uploadRes = await cloudinary.uploader.upload(filePath, {
+          folder: `tma_cards/${cardId}`,
+          resource_type: 'image'
+        });
+        log('upload', 'Uploaded to Cloudinary:', uploadRes?.secure_url);
+      } catch (errUpload) {
+        err('upload', 'Cloudinary error:', errUpload.message);
+      }
+    }
+
+
+    res.json({
+      ok: true,
+      url: uploadRes?.secure_url || `/assets/${cardId}/${req.file.originalname}`,
+      path: uploadRes?.public_id || filePath
+    });
+  } catch (e) {
+    err('upload', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
+
 
 function parseBtn(line) {
   const [t, u] = (line || '').split('|');
@@ -459,9 +501,15 @@ function loadProductsFile(){
   try{ if (fs.existsSync(PRODUCTS_FILE)) return JSON.parse(fs.readFileSync(PRODUCTS_FILE,'utf8')); }catch(e){ console.warn('loadProductsFile error', e.message); }
   return [];
 }
+
+log('products', 'Upserting product:', product.id, 'title:', product.title);
+
 function saveProductsFile(list){
   try{ fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(list, null, 2), 'utf8'); return true; }catch(e){ console.error('saveProductsFile error', e.message); return false; }
 }
+
+const ok = saveProductsFile(list);
+log('products', `File write ${ok ? 'OK' : 'FAIL'}. Total products: ${list.length}`);
 
 // --- GitHub integration helpers (optional) --------------------------------
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
@@ -515,10 +563,8 @@ async function syncProductsFromGitHubToLocal(){
 
 
 function verifyInitData(initDataString){
-  // initDataString — строка initData из Telegram WebApp
   if (!initDataString || !BOT_TOKEN) return null;
   try{
-    // разбираем пары, разделённые либо '&' либо '\n'
     const parts = String(initDataString).split(/[\n&]/).filter(Boolean);
     const kv = {};
     for (const p of parts) {
@@ -574,6 +620,39 @@ app.post('/check_admin', express.json(), (req, res) => {
   }catch(e){ console.error('check_admin error', e.message); return res.status(500).json({ ok:false }); }
 });
 
+app.get('/check_admin', async (req, res) => {
+  try {
+    const init_data = req.query.init_data;
+    const unsafe = req.query.unsafe === 'true';
+    const v = verifyInitData(init_data); // возвращает { ok:true, data, user_id } или null
+
+    let uid = null;
+    if (v) {
+      // user_id напрямую или из поля user (строка JSON в initData)
+      uid = v.user_id ?? (v.data?.user ? JSON.parse(v.data.user).id : null) ?? v.data?.user_id ?? null;
+      log('check_admin', 'Verified uid:', uid);
+    } else {
+      warn('check_admin', 'Invalid init_data, fallback:', unsafe);
+    }
+
+    if (!uid && process.env.ALLOW_UNSAFE_ADMIN === 'true' && unsafe) {
+      log('check_admin', 'Using UNSAFE admin fallback.');
+      return res.json({ ok: true, admin: true, unsafe: true });
+    }
+
+    if (!uid) return res.status(403).json({ ok: false, error: 'invalid_init_data' });
+
+    const adminIds = (process.env.ADMIN_CHAT_IDS || '').split(',').map(s => s.trim());
+    const isAdmin = adminIds.includes(String(uid));
+    log('check_admin', `Admin check for ${uid}: ${isAdmin}`);
+    res.json({ ok: true, admin: isAdmin });
+  } catch (e) {
+    err('check_admin', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+
 app.get('/products', (req, res) => {
   try{
     const list = loadProductsFile();
@@ -582,32 +661,51 @@ app.get('/products', (req, res) => {
 });
 
 // protected upsert product
-app.post('/products', express.json(), (req, res) => {
-  try{
-    const { init_data, product } = req.body || {};
-    const v = verifyInitData(init_data);
-    if (!v) return res.status(403).json({ ok:false, error:'invalid_init_data' });
-    const uid = v.user_id || (v.data && (v.data.user_id || v.data.user && JSON.parse(v.data.user).id));
-    if (!uid || !ADMIN_CHAT_IDS.includes(Number(uid))) return res.status(403).json({ ok:false, error:'not_admin' });
+app.post('/products', async (req, res) => {
+  try {
+    const { init_data, product } = req.body;
+    log('products', 'Incoming product:', product?.id || '(no id)');
 
-    if (!product || !product.id) return res.status(400).json({ ok:false, error:'missing_product' });
-    const list = loadProductsFile().filter(x=>x.id!==product.id);
-    list.push(product);
+    const v = verifyInitData(init_data);
+    let uid = null;
+    if (v) {
+      uid = v.user_id ?? (v.data?.user ? JSON.parse(v.data.user).id : null) ?? v.data?.user_id ?? null;
+    }
+    if (!uid && process.env.ALLOW_UNSAFE_ADMIN === 'true') {
+      log('products', 'InitData invalid, using UNSAFE fallback.');
+      uid = 'unsafe-admin';
+    }
+    if (!uid) {
+      warn('products', 'Invalid init_data, rejecting request.');
+      return res.status(403).json({ ok: false, error: 'invalid_init_data' });
+    }
+
+    const adminIds = (process.env.ADMIN_CHAT_IDS || '').split(',').map(s => s.trim());
+    const isAdmin = adminIds.includes(String(uid)) || uid === 'unsafe-admin';
+    if (!isAdmin) {
+      warn('products', `User ${uid} not in ADMIN_CHAT_IDS`);
+      return res.status(403).json({ ok: false, error: 'not_admin' });
+    }
+
+    if (!isAdmin) {
+      warn('products', `User ${user.id} not in ADMIN_CHAT_IDS`);
+      return res.status(403).json({ ok: false, error: 'not_admin' });
+    }
+
+    const list = loadProductsFile();
+    const idx = list.findIndex(p => p.id === product.id);
+    if (idx >= 0) list[idx] = product;
+    else list.push(product);
     saveProductsFile(list);
-    // if github configured - push
-    (async ()=>{
-      try{ const txt = JSON.stringify(list, null, 2);
-        // get existing sha
-        const f = await githubGetFileContent();
-        const sha = f && f.sha ? f.sha : undefined;
-        const p = await githubPutFileContent(txt, sha);
-        if (!p.ok) console.warn('github push failed', p.error);
-        else console.log('products.json pushed to GitHub');
-      }catch(e){ console.warn('push products to github error', e.message); }
-    })();
-    return res.json({ ok:true, product });
-  }catch(e){ console.error('POST /products error', e.message); return res.status(500).json({ ok:false }); }
+
+    log('products', `Saved product: ${product.id}, total now: ${list.length}`);
+    res.json({ ok: true });
+  } catch (e) {
+    err('products', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
+
 
 app.delete('/products/:id', express.json(), (req, res) => {
   try{
