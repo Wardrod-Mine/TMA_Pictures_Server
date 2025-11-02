@@ -644,12 +644,13 @@ app.get('/check_admin', async (req, res) => {
       warn('check_admin', 'Invalid init_data, fallback:', unsafe);
     }
 
-  if (!uid && process.env.ALLOW_UNSAFE_ADMIN === 'true' && unsafe) {
-    return res.status(403).json({ ok: false, error: 'invalid_init_data_unsafe' });
+  if (!uid) {
+    if (process.env.ALLOW_UNSAFE_ADMIN === 'true') {
+      // небезопасный, но разрешённый режим — считаем админом
+      return res.json({ ok: true, isAdmin: true, admin: true });
+    }
+    return res.status(403).json({ ok: false, error: 'invalid_init_data' });
   }
-
-    if (!uid) return res.status(403).json({ ok: false, error: 'invalid_init_data' });
-
     const adminIds = (process.env.ADMIN_CHAT_IDS || '')
       .split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
     const isAdmin = adminIds.includes(String(uid));
@@ -710,7 +711,21 @@ app.post('/products', async (req, res) => {
     const ok = saveProductsFile(list);
     log('products', `File write ${ok ? 'OK' : 'FAIL'}. Total: ${list.length}`);
 
-    return res.json({ ok: true });
+    // фоновый пуш products.json в GitHub
+    (async () => {
+      try {
+        const txt = JSON.stringify(list, null, 2);
+        const f = await githubGetFileContent();
+        const sha = f && f.sha ? f.sha : undefined;
+        const p = await githubPutFileContent(txt, sha);
+        if (!p.ok) console.warn('github push failed', p.error);
+        else console.log('products.json pushed to GitHub');
+      } catch (e) {
+        console.warn('push products to github error', e.message);
+      }
+    })();
+    return res.json({ ok: true, product });
+
   } catch (e) {
     err('products', e);
     return res.status(500).json({ ok: false, error: e.message });
