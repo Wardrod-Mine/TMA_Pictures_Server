@@ -488,6 +488,32 @@ async function sendPost({ chatId, threadId, text, photoFileId }, tg) {
   }
 }
 
+// ======= Проверка администратора для фронта =======
+app.post('/check_admin', express.json(), (req, res) => {
+  try {
+    const initData = req.headers['telegram-init-data'] || req.body?.init_data || '';
+    let userId = null;
+
+    if (initData && typeof initData === 'string' && initData.includes('user')) {
+      try {
+        const kv = Object.fromEntries(new URLSearchParams(initData));
+        if (kv.user) {
+          const user = JSON.parse(kv.user);
+          userId = Number(user.id);
+        }
+      } catch {}
+    }
+
+    if (userId && ADMIN_CHAT_IDS.includes(userId)) {
+      return res.json({ ok: true, isAdmin: true });
+    }
+    res.json({ ok: true, isAdmin: false });
+    
+  } catch (e) {
+    console.error('/check_admin error', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 app.get('/', (req, res) => res.send('Bot is running'));
 app.get('/debug', async (req, res) => {
@@ -609,35 +635,22 @@ function verifyInitData(initDataString){
   }catch(e){ console.warn('verifyInitData error', e.message); return null; }
 }
 
+// ======= Проверка администратора (ТОЛЬКО по ADMIN_CHAT_IDS) =======
 app.post('/check_admin', express.json(), (req, res) => {
-  try{
-    const { init_data, init_data_unsafe } = req.body || {};
-    try{
-      const keys = Object.keys(req.body || {});
-      console.log('[check_admin] received keys:', keys);
-      if (init_data) console.log('[check_admin] init_data present, len=', String(init_data).length);
-      if (init_data_unsafe && init_data_unsafe.user) console.log('[check_admin] init_data_unsafe.user -> id=', init_data_unsafe.user.id, ' username=', init_data_unsafe.user.username || '');
-    }catch(e){ /* ignore logging errors */ }
-    const ALLOW_UNSAFE = (process.env.ALLOW_UNSAFE_ADMIN === 'true');
+  try {
+    const initData = req.headers['telegram-init-data'] || req.body?.init_data || '';
+    // верифицируем подпись initData, используем имеющуюся verifyInitData
+    const v = verifyInitData?.(initData);
+    const userId = v && v.ok ? Number(v.user_id || v.data?.user?.id) : null;
 
-    const v = verifyInitData(init_data);
-    if (v) {
-      const uid = v.user_id || (v.data && (v.data.user_id || v.data.user && JSON.parse(v.data.user).id));
-      const isAdm = !!(uid && ADMIN_CHAT_IDS.includes(Number(uid)));
-      return res.json({ ok:true, isAdmin: isAdm, user_id: uid, unsafe: false });
+    if (userId && ADMIN_CHAT_IDS.includes(userId)) {
+      return res.json({ ok: true, isAdmin: true, user_id: userId });
     }
-
-    if (!v && init_data_unsafe && ALLOW_UNSAFE) {
-      try{
-        const uid = init_data_unsafe.user?.id || init_data_unsafe.user_id || null;
-        const isAdm = !!(uid && ADMIN_CHAT_IDS.includes(Number(uid)));
-        console.log('[check_admin] using unsafe init_data fallback, uid=', uid);
-        return res.json({ ok:true, isAdmin: isAdm, user_id: uid, unsafe: true });
-      }catch(e){ /* ignore parse errors below */ }
-    }
-
-    return res.json({ ok:false, isAdmin:false });
-  }catch(e){ console.error('check_admin error', e.message); return res.status(500).json({ ok:false }); }
+    return res.json({ ok: true, isAdmin: false, user_id: userId || null });
+  } catch (e) {
+    console.error('/check_admin error', e.message);
+    return res.status(200).json({ ok: false, isAdmin: false }); // не роняем фронт
+  }
 });
 
 app.get('/check_admin', async (req, res) => {
