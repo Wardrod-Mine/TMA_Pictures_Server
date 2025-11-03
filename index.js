@@ -696,7 +696,7 @@ app.get('/products', (req, res) => {
   }catch(e){ console.error('GET /products error', e.message); return res.status(500).json({ ok:false }); }
 });
 
-app.post('/products', async (req, res) => {
+app.post('/products', express.json(), async (req, res) => {
   try {
     const { init_data, product } = req.body;
     log('products', 'Incoming product:', product?.id || '(no id)');
