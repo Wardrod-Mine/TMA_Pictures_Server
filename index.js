@@ -699,32 +699,32 @@ app.get('/products', (req, res) => {
 app.post('/products', express.json(), async (req, res) => {
   try {
     const product = req.body?.product;
-    // init_data и из заголовка, и из body
-    const init_data =
+    const initData =
       req.headers['telegram-init-data'] ||
       req.body?.init_data ||
       '';
+
     log('products', 'Incoming product:', product?.id || '(no id)');
 
-    const v = verifyInitData(init_data);
+    // 1) Подпись Telegram
+    const v = verifyInitData(initData);
+
+    // 2) Получаем uid
+
     let uid = null;
-    if (v) {
-      uid = v.user_id
-        ?? (v.data?.user ? JSON.parse(v.data.user).id : null)
-        ?? v.data?.user_id
-        ?? null;
-      log('products', 'Verified uid:', uid);
-    } else {
-      warn('products', 'Invalid init_data');
+    if (v?.user?.id) uid = Number(v.user.id);
+    if (!uid && typeof initData === 'string' && initData.includes('user=')) {
+      try {
+        const kv = Object.fromEntries(new URLSearchParams(initData));
+        if (kv.user) uid = Number(JSON.parse(kv.user).id);
+      } catch {}
     }
 
-    if (!uid && process.env.ALLOW_UNSAFE_ADMIN === 'true') {
-      log('products', 'InitData invalid, using UNSAFE fallback');
-      uid = 'unsafe-admin';
-    }
-    if (!uid) {
+    if (!uid || !ADMIN_CHAT_IDS.includes(uid)) {
+      warn('products', 'Invalid init_data');
       return res.status(403).json({ ok: false, error: 'invalid_init_data' });
     }
+    // 3) Проверяем админа
 
     const adminIds = (process.env.ADMIN_CHAT_IDS || '')
       .split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
@@ -732,6 +732,10 @@ app.post('/products', express.json(), async (req, res) => {
     if (!isAdmin) {
       warn('products', `User ${uid} is not admin`);
       return res.status(403).json({ ok: false, error: 'not_admin' });
+    }
+    if (!product || typeof product !== 'object' || !product.id) {
+      warn('products', 'Invalid product data');
+      return res.status(400).json({ ok: false, error: 'invalid_product' });
     }
 
     const list = loadProductsFile();
@@ -763,7 +767,7 @@ app.post('/products', express.json(), async (req, res) => {
   }
 });
 
-
+// ======================== Удаление карточек =========================
 app.delete('/products/:id', express.json(), (req, res) => {
   try{
     const { init_data } = req.body || {};
