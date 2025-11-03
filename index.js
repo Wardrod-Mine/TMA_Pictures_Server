@@ -46,7 +46,7 @@ app.use(cors({
     } catch { return cb(new Error(`CORS parse fail ${origin}`)); }
   },
   methods: ['GET','POST','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type'],
+  allowedHeaders: ['Content-Type', 'Telegram-Init-Data'],
   optionsSuccessStatus: 204
 }));
 app.options('*', cors());
@@ -698,7 +698,12 @@ app.get('/products', (req, res) => {
 
 app.post('/products', express.json(), async (req, res) => {
   try {
-    const { init_data, product } = req.body;
+    const product = req.body?.product;
+    // init_data и из заголовка, и из body
+    const init_data =
+      req.headers['telegram-init-data'] ||
+      req.body?.init_data ||
+      '';
     log('products', 'Incoming product:', product?.id || '(no id)');
 
     const v = verifyInitData(init_data);
