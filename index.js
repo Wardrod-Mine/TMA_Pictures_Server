@@ -515,6 +515,84 @@ app.post('/check_admin', express.json(), (req, res) => {
   }
 });
 
+app.post('/products', express.json(), async (req, res) => {
+  try {
+    const initData =
+      req.headers['telegram-init-data'] ||
+      req.body?.init_data ||
+      '';
+
+    const v = verifyInitData(initData);
+    let uid = null;
+    if (v?.user?.id) uid = Number(v.user.id);
+    if (!uid && typeof initData === 'string' && initData.includes('user=')) {
+      try {
+        const kv = Object.fromEntries(new URLSearchParams(initData));
+        if (kv.user) uid = Number(JSON.parse(kv.user).id);
+      } catch {}
+    }
+
+    if (!uid || !ADMIN_CHAT_IDS.includes(uid)) {
+      warn('products', 'Invalid init_data');
+      return res.status(403).json({ ok:false, error:'invalid_init_data' });
+    }
+
+    const product = req.body?.product;
+    if (!product || !product.id) {
+      return res.status(400).json({ ok:false, error:'bad_product' });
+    }
+
+    const list = loadProductsFile();
+    const i = list.findIndex(x => x.id === product.id);
+    if (i >= 0) list[i] = product;
+    else list.push(product);
+    saveProductsFile(list);
+
+    const gh = await githubPutFileContent(JSON.stringify(list, null, 2));
+    if (!gh) log('products', 'Saved local only'); else log('products', 'Saved to GitHub');
+
+    res.json({ ok:true, product });
+  } catch (e) {
+    err('products', e.message);
+    res.status(500).json({ ok:false, error:e.message });
+  }
+});
+
+app.delete('/products/:id', express.json(), async (req, res) => {
+  try {
+    const initData =
+      req.headers['telegram-init-data'] ||
+      req.body?.init_data ||
+      '';
+    const v = verifyInitData(initData);
+    const uid = Number(v?.user?.id || 0);
+    if (!uid || !ADMIN_CHAT_IDS.includes(uid)) {
+      return res.status(403).json({ ok:false, error:'invalid_init_data' });
+    }
+
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok:false, error:'bad_id' });
+
+    const list = loadProductsFile().filter(x => x.id !== id);
+    saveProductsFile(list);
+    await githubPutFileContent(JSON.stringify(list, null, 2));
+
+    res.json({ ok:true });
+  } catch (e) {
+    err('products.del', e.message);
+    res.status(500).json({ ok:false, error:e.message });
+  }
+});
+
+app.get('/products', async (req, res) => {
+  try {
+    const list = loadProductsFile();
+    res.json({ ok:true, products:list });
+  } catch (e) {
+    res.status(500).json({ ok:false, error:e.message });
+  }
+});
+
 app.get('/', (req, res) => res.send('Bot is running'));
 app.get('/debug', async (req, res) => {
   try {
