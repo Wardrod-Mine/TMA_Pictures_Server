@@ -558,8 +558,8 @@ function loadProductsFile(){
   return [];
 }
 
-function saveProductsFile(list){
-  try{ fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(list, null, 2), 'utf8'); return true; }catch(e){ console.error('saveProductsFile error', e.message); return false; }
+function saveProductsFile(data){  
+  try{ fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(data, null, 2), 'utf8'); }catch(e){ console.warn('saveProductsFile error', e.message); }
 }
 
 // ===============================GitHub интеграция для products.json ===============================
@@ -584,33 +584,47 @@ async function githubGetFileContent(){
 }
 
 async function githubPutFileContent(textContent, sha){
-  if (!GITHUB_TOKEN || !GITHUB_REPO) return { ok:false, error:'no_github_config' };
+  if (!GITHUB_TOKEN || !GITHUB_REPO) return null;
   try{
     const [owner, repo] = GITHUB_REPO.split('/');
     const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(GITHUB_PRODUCTS_PATH)}`;
-    const body = {
+    const payload = {
       message: GITHUB_COMMIT_MESSAGE,
       content: Buffer.from(textContent, 'utf8').toString('base64'),
-      branch: GITHUB_COMMIT_BRANCH
+      branch: GITHUB_COMMIT_BRANCH,
+      sha: sha || undefined
     };
-    if (sha) body.sha = sha;
-    const res = await fetch(url, { method: 'PUT', headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json', 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) { console.warn('githubPutFileContent: not ok', res.status); return null; }
     const j = await res.json();
-    if (!res.ok) { console.warn('githubPutFileContent failed', res.status, j); return { ok:false, error: j }; }
-    return { ok:true, result: j };
-  }catch(e){ console.warn('githubPutFileContent error', e.message); return { ok:false, error: e.message }; }
+    return { ok:true, sha: j.content?.sha };
+  }catch(e){ console.warn('githubPutFileContent error', e.message); return null; }
 }
 
 async function syncProductsFromGitHubToLocal(){
   try{
-    const f = await githubGetFileContent();
-    if (f && f.content) {
-      try{ fs.writeFileSync(PRODUCTS_FILE, f.content, 'utf8'); console.log('✅ products.json synced from GitHub'); return true; }catch(e){ console.warn('sync write failed', e.message); }
+    const ghFile = await githubGetFileContent();  
+    if (!ghFile || !ghFile.content) {
+      console.warn('syncProductsFromGitHubToLocal: no content from GitHub');
+      return;
     }
+    const localList = loadProductsFile();
+    const ghList = JSON.parse(ghFile.content);
+    const localHash = crypto.createHash('md5').update(JSON
+.stringify(localList)).digest('hex');
+    const ghHash = crypto.createHash('md5').update(JSON.stringify(ghList)).digest('hex');
+    if (localHash !== ghHash) {
+      saveProductsFile(ghList);
+      console.log('✅ products.json синхронизирован из GitHub');
+    } else {
+      console.log('ℹ️ products.json локальный актуален, синхронизация не нужна');
+    } 
   }catch(e){ console.warn('syncProductsFromGitHubToLocal error', e.message); }
-  return false;
 }
-
 
 function verifyInitData(initDataString){
   if (!initDataString || !BOT_TOKEN) return null;
@@ -635,24 +649,32 @@ function verifyInitData(initDataString){
   }catch(e){ console.warn('verifyInitData error', e.message); return null; }
 }
 
-// ======= Проверка администратора (ТОЛЬКО по ADMIN_CHAT_IDS) =======
+// ======= Проверка администратора (простой) =======
 app.post('/check_admin', express.json(), (req, res) => {
   try {
     const initData = req.headers['telegram-init-data'] || req.body?.init_data || '';
-    // верифицируем подпись initData, используем имеющуюся verifyInitData
-    const v = verifyInitData?.(initData);
-    const userId = v && v.ok ? Number(v.user_id || v.data?.user?.id) : null;
+    let userId = null;
+    if (initData && typeof initData === 'string' && initData.includes('user')) {
+      try {
+        const kv = Object.fromEntries(new URLSearchParams(initData));
+        if (kv.user) {
+          const user = JSON.parse(kv.user);
+          userId = Number(user.id);
+        }
+      } catch {}
+    }
 
     if (userId && ADMIN_CHAT_IDS.includes(userId)) {
-      return res.json({ ok: true, isAdmin: true, user_id: userId });
+      return res.json({ ok: true, isAdmin: true });
     }
-    return res.json({ ok: true, isAdmin: false, user_id: userId || null });
+    res.json({ ok: true, isAdmin: false });
   } catch (e) {
     console.error('/check_admin error', e.message);
-    return res.status(200).json({ ok: false, isAdmin: false }); // не роняем фронт
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
+// ======= Проверка администратора (расширенная) =======
 app.get('/check_admin', async (req, res) => {
   try {
     const init_data = req.query.init_data;
@@ -788,33 +810,25 @@ app.delete('/products/:id', express.json(), (req, res) => {
 // ======================== Редактирование карточек =========================
 app.patch('/products/:id', express.json(), (req, res) => {
   try{
-    const { init_data, patch } = req.body || {};
+    const { init_data, updates } = req.body || {};
     const v = verifyInitData(init_data);
     if (!v) return res.status(403).json({ ok:false, error:'invalid_init_data' });
     const uid = v.user_id || (v.data && (v.data.user_id || v.data.user && JSON.parse(v.data.user).id));
     if (!uid || !ADMIN_CHAT_IDS.includes(Number(uid))) return res.status(403).json({ ok:false, error:'not_admin' });
-
     const id = req.params.id;
-    if (!patch || typeof patch !== 'object') return res.status(400).json({ ok:false, error:'missing_patch' });
-
-    const list = loadProductsFile();
-    const idx = list.findIndex(x => x.id === id);
+    let list = loadProductsFile();
+    const idx = list.findIndex(p => p.id === id);
     if (idx === -1) return res.status(404).json({ ok:false, error:'not_found' });
-
-    const allowed = ['title','shortDescription','short','description','long','imgs','link'];
-    const target = list[idx];
-    for (const k of Object.keys(patch)) {
-      if (allowed.includes(k)) target[k] = patch[k];
+    const prod = list[idx];
+    for (const k of Object.keys(updates || {})) {
+      prod[k] = updates[k];
     }
-    target.updatedAt = (new Date()).toISOString();
     saveProductsFile(list);
-
     (async ()=>{
       try{ const txt = JSON.stringify(list, null, 2); const f = await githubGetFileContent(); const sha = f && f.sha ? f.sha : undefined; const p = await githubPutFileContent(txt, sha); if (!p.ok) console.warn('github push failed', p.error); else console.log('products.json pushed to GitHub'); }catch(e){ console.warn('push products to github error', e.message); }
     })();
-
-    return res.json({ ok:true, product: target });
-  }catch(e){ console.error('PATCH /products/:id error', e.message); return res.status(500).json({ ok:false, error: e.message }); }
+    return res.json({ ok:true, product: prod });
+  }catch(e){ console.error('PATCH /products error', e.message); return res.status(500).json({ ok:false }); }
 });
 
 // ======================== Удаление изображений =========================
@@ -844,28 +858,22 @@ app.delete('/images', express.json(), async (req, res) => {
       }catch(e){ console.warn('local delete failed', e.message); }
     }
 
-    if (productId) {
-      try{
-        const list = loadProductsFile();
-        const idx = list.findIndex(x => x.id === productId);
-        if (idx !== -1) {
-          const prod = list[idx];
-          const imgs = (prod.imgs || []).filter(img => {
-            if (!img) return false;
-            if (typeof img === 'string') return !(img.includes(public_id) || img.includes(imgPath || ''));
-            const url = img.url || '';
-            const pid = img.public_id || '';
-            return !(pid === public_id || url.includes(public_id) || url.includes(imgPath || ''));
-          });
-          prod.imgs = imgs;
-          prod.updatedAt = (new Date()).toISOString();
+    if (deleted && productId) {
+      const list = loadProductsFile();
+      const idx = list.findIndex(p => p.id === productId);
+      if (idx !== -1) {
+        const prod = list[idx];
+        if (Array.isArray(prod.imgs)) {
+          prod.imgs = prod.imgs.filter(img => img.path !== imgPath && img.public_id !== public_id);
           saveProductsFile(list);
-          (async ()=>{ try{ const txt = JSON.stringify(list, null, 2); const f = await githubGetFileContent(); const sha = f && f.sha ? f.sha : undefined; const p = await githubPutFileContent(txt, sha); if (!p.ok) console.warn('github push failed', p.error); else console.log('products.json pushed to GitHub'); }catch(e){ console.warn('push products to github error', e.message); } })();
+          (async ()=>{
+            try{ const txt = JSON.stringify(list, null, 2); const f = await githubGetFileContent(); const sha = f && f.sha ? f.sha : undefined; const p = await githubPutFileContent(txt, sha); if (!p.ok) console.warn('github push failed', p.error); else console.log('products.json pushed to GitHub'); }catch(e){ console.warn('push products to github error', e.message); }
+          })();
         }
-      }catch(e){ console.warn('remove image from product failed', e.message); }
+      }
     }
-
     return res.json({ ok:true, deleted });
   }catch(e){ console.error('DELETE /images error', e.message); return res.status(500).json({ ok:false, error: e.message }); }
 });
+
 
