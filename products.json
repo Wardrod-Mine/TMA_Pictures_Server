@@ -1,17 +1,5 @@
 [
   {
-    "id": "The Book",
-    "title": "Книга",
-    "shortDescription": "Описание",
-    "description": "Расширенное описание",
-    "imgs": [
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_Book/IMG_2832.jpeg",
-        "public_id": "assets/The_Book/IMG_2832.jpeg"
-      }
-    ]
-  },
-  {
     "id": "Merch",
     "title": "Одежда",
     "shortDescription": "Описание",
