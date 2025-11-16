@@ -17,5 +17,17 @@
         "public_id": "assets/The_Book/IMG_2832.jpeg"
       }
     ]
+  },
+  {
+    "id": "Merch",
+    "title": "Одежда",
+    "shortDescription": "Описание",
+    "description": "Расширенное Описание",
+    "imgs": [
+      {
+        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/Merch/IMG_2726.png",
+        "public_id": "assets/Merch/IMG_2726.png"
+      }
+    ]
   }
 ]
