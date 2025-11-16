@@ -869,10 +869,8 @@ app.patch('/products/:id', express.json(), (req, res) => {
 // ======================== Удаление изображений =========================
 app.delete('/images', express.json(), async (req, res) => {
   try{
-    const { init_data, public_id, path: imgPath, productId } = req.body || {};
-    const v = verifyInitData(init_data);
-    if (!v) return res.status(403).json({ ok:false, error:'invalid_init_data' });
-    const uid = v.user_id || (v.data && (v.data.user_id || v.data.user && JSON.parse(v.data.user).id));
+    const { public_id, path: imgPath, productId } = req.body || {};
+    const uid = extractUserIdFromRequest(req);
     if (!uid || !ADMIN_CHAT_IDS.includes(Number(uid))) return res.status(403).json({ ok:false, error:'not_admin' });
 
     let deleted = false;
