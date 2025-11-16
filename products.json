@@ -29,5 +29,17 @@
         "public_id": "assets/Merch/IMG_2726.png"
       }
     ]
+  },
+  {
+    "id": "Graffiti",
+    "title": "Оформление",
+    "shortDescription": "Описание",
+    "description": "Расширенное Описание",
+    "imgs": [
+      {
+        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/Graffiti/IMG_2734.jpeg",
+        "public_id": "assets/Graffiti/IMG_2734.jpeg"
+      }
+    ]
   }
 ]
