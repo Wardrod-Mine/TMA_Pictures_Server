@@ -4,12 +4,7 @@
     "title": "Одежда",
     "shortDescription": "Описание",
     "description": "Расширенное описание",
-    "imgs": [
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/Merch/IMG_2727.jpeg",
-        "public_id": "assets/Merch/IMG_2727.jpeg"
-      }
-    ]
+    "imgs": []
   },
   {
     "id": "Graffiti",
