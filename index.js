@@ -654,6 +654,12 @@ function extractUserIdFromRequest(req){
     const unsafe = req.body?.init_data_unsafe || req.body?.initDataUnsafe || req.body?.init_data_unsafe_raw || (req.body && req.body.init_data && typeof req.body.init_data === 'string' && req.body.init_data.includes('user=') && req.body.init_data);
     if (unsafe) {
       try{
+        // Если unsafe уже объект (initDataUnsafe), извлекаем напрямую
+        if (typeof unsafe === 'object' && unsafe.user) {
+          const uid = unsafe.user.id || (unsafe.user && unsafe.user.id);
+          if (uid) return Number(uid);
+        }
+        // Если это строка — парсим URLSearchParams
         const kv = Object.fromEntries(new URLSearchParams(String(unsafe)));
         if (kv.user) {
           const u = JSON.parse(kv.user);
