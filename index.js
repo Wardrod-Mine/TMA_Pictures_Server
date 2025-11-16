@@ -875,7 +875,7 @@ app.delete('/images', express.json(), async (req, res) => {
 
     let deleted = false;
 
-    if (public_id && cloudinary && cloudinary.uploader && process.env.CLOUDINARY_URL) {
+    if (public_id && typeof cloudinary !== 'undefined' && cloudinary && cloudinary.uploader && process.env.CLOUDINARY_URL) {
       try{
         const r = await cloudinary.uploader.destroy(public_id);
         console.log('cloudinary destroy', public_id, r);
