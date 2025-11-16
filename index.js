@@ -888,7 +888,9 @@ app.delete('/images', express.json(), async (req, res) => {
         const rel = imgPath.replace(/^\//,'');
         const abs = path.join(__dirname, rel);
         if (fs.existsSync(abs)) { fs.unlinkSync(abs); deleted = true; }
-      }catch(e){ console.warn('local delete failed', e.message); }
+      }catch(e){
+        console.error('local delete failed', e && e.stack ? e.stack : e);
+      }
     }
 
     if (deleted && productId) {
