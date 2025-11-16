@@ -637,7 +637,13 @@ function loadProductsFile(){
 }
 
 function saveProductsFile(data){  
-  try{ fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(data, null, 2), 'utf8'); }catch(e){ console.warn('saveProductsFile error', e.message); }
+  try{
+    fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(data, null, 2), 'utf8');
+    return true;
+  }catch(e){
+    console.warn('saveProductsFile error', e.message);
+    return false;
+  }
 }
 
 // ===============================GitHub интеграция для products.json ===============================
