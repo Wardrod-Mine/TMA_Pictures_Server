@@ -1,12 +1,5 @@
 [
   {
-    "id": "Merch",
-    "title": "Одежда",
-    "shortDescription": "Описание",
-    "description": "Расширенное описание",
-    "imgs": []
-  },
-  {
     "id": "Graffiti",
     "title": "Оформление",
     "shortDescription": "Описание",
