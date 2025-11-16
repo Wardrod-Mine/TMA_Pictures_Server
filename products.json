@@ -3,11 +3,11 @@
     "id": "Merch",
     "title": "Одежда",
     "shortDescription": "Описание",
-    "description": "Расширенн",
+    "description": "Расширенное описание",
     "imgs": [
       {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/Merch/IMG_2726.png",
-        "public_id": "assets/Merch/IMG_2726.png"
+        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/Merch/IMG_2727.jpeg",
+        "public_id": "assets/Merch/IMG_2727.jpeg"
       }
     ]
   },
