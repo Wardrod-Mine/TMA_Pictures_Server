@@ -10,5 +10,17 @@
         "public_id": "assets/Graffiti/IMG_2734.jpeg"
       }
     ]
+  },
+  {
+    "id": "Merch",
+    "title": "Мерч",
+    "shortDescription": "описание",
+    "description": "расшиернное описание",
+    "imgs": [
+      {
+        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/Merch/________________2.jpg",
+        "public_id": "assets/Merch/________________2.jpg"
+      }
+    ]
   }
 ]
