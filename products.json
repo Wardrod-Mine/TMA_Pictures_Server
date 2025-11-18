@@ -22,5 +22,12 @@
         "public_id": "assets/Merch/________________2.jpg"
       }
     ]
+  },
+  {
+    "id": "The Book",
+    "title": "Книга",
+    "shortDescription": "описание",
+    "description": "Расширенное описание",
+    "imgs": []
   }
 ]
