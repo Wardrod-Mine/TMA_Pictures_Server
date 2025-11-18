@@ -28,6 +28,11 @@
     "title": "Книга",
     "shortDescription": "описание",
     "description": "Расширенное описание",
-    "imgs": []
+    "imgs": [
+      {
+        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_Book/photo_2025-10-05_18-04-02.jpg",
+        "public_id": "assets/The_Book/photo_2025-10-05_18-04-02.jpg"
+      }
+    ]
   }
 ]
