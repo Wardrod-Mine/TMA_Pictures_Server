@@ -34,5 +34,12 @@
         "public_id": "assets/The_Book/photo_2025-10-05_18-04-02.jpg"
       }
     ]
+  },
+  {
+    "id": "The book",
+    "title": "Книги",
+    "shortDescription": "ALPHALIFE Sasha Trun",
+    "description": "A book by St. Petersburg artist Sasha Trun, presenting more than 600 author's variations of letters of the Latin alphabet.\nЦена: 10 000₽\n👉 «Предзаказ книги»",
+    "imgs": []
   }
 ]
