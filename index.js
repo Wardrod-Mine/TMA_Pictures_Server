@@ -263,8 +263,9 @@ bot.command('post', async (ctx) => {
     if (!postText) {
       return ctx.reply(
         'Пришлите текст поста после команды:\n' +
-        '/post Текст поста\n' +
-        'ИЛИ ответьте /post на сообщение с текстом/фото+подписью.\n' +
+        '(/post: "Текст поста")\n' +
+        'ИЛИ\n' 
+        'ответьте /post на сообщение с текстом/фото+подписью.\n' +
         `Кнопка будет добавлена автоматически: «${POST_BUTTON_TEXT}» → ${POST_BUTTON_URL}`,
         { disable_web_page_preview: true }
       );
@@ -910,5 +911,6 @@ app.delete('/images', express.json(), async (req, res) => {
     return res.json({ ok:true, deleted });
   }catch(e){ console.error('DELETE /images error', e.message); return res.status(500).json({ ok:false, error: e.message }); }
 });
+
 
 
