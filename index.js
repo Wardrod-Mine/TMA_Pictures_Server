@@ -167,20 +167,17 @@ bot.start(async (ctx) => {
   });
 
   if (ctx.chat?.type === 'private' && isAdmin(ctx.from?.id)) {
-    await ctx.reply(
-      [
-        '🛠 <b>Публикация поста</b>',
-        '• Напишите текст поста и отправьте:',
-        '<code>/post Текст поста</code>',
-        '• Или ответьте командой <code>/post</code> на сообщение с текстом/фото+подписью.',
-        '',
-        `Кнопка добавляется автоматически: «${POST_BUTTON_TEXT}» → ${POST_BUTTON_URL}`,
-        CHANNEL_ID
-          ? `По умолчанию посты уходят в: <code>${CHANNEL_ID}</code>`
-          : 'Без CHANNEL_ID пост уйдёт в текущий чат.'
-      ].join('\n'),
-      { parse_mode: 'HTML', disable_web_page_preview: true }
-    );
+    await ctx.reply([
+    '🛠 <b>Публикация поста</b>',
+    '• Ответьте командой <code>/post</code> на сообщение с текстом/фото+подписью.',
+    '',
+    `Кнопка добавляется автоматически: «${POST_BUTTON_TEXT}» → ${POST_BUTTON_URL}`,
+    CHANNEL_ID
+      ? `По умолчанию посты уходят в: <code>${CHANNEL_ID}</code>`
+      : 'Без CHANNEL_ID пост уйдёт в текущий чат.'
+  ].join('\n'),
+  { parse_mode: 'HTML', disable_web_page_preview: true }
+);
   }
 });
 
@@ -911,6 +908,7 @@ app.delete('/images', express.json(), async (req, res) => {
     return res.json({ ok:true, deleted });
   }catch(e){ console.error('DELETE /images error', e.message); return res.status(500).json({ ok:false, error: e.message }); }
 });
+
 
 
 
