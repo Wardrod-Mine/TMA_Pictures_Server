@@ -1,17 +1,5 @@
 [
   {
-    "id": "Graffiti",
-    "title": "Оформление",
-    "shortDescription": "Описание",
-    "description": "Расширенное Описание продолжение!",
-    "imgs": [
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/Graffiti/IMG_2734.jpeg",
-        "public_id": "assets/Graffiti/IMG_2734.jpeg"
-      }
-    ]
-  },
-  {
     "id": "The book",
     "title": "ALPHALIFE Sasha Trun",
     "shortDescription": "Книга ALPHALIFE Sasha Trun",
