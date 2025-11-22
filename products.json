@@ -12,18 +12,6 @@
     ]
   },
   {
-    "id": "Merch",
-    "title": "Мерч",
-    "shortDescription": "описание",
-    "description": "расшиернное описание",
-    "imgs": [
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/Merch/________________2.jpg",
-        "public_id": "assets/Merch/________________2.jpg"
-      }
-    ]
-  },
-  {
     "id": "The book",
     "title": "ALPHALIFE Sasha Trun",
     "shortDescription": "Книга ALPHALIFE Sasha Trun",
