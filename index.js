@@ -908,8 +908,3 @@ app.delete('/images', express.json(), async (req, res) => {
     return res.json({ ok:true, deleted });
   }catch(e){ console.error('DELETE /images error', e.message); return res.status(500).json({ ok:false, error: e.message }); }
 });
-
-
-
-
-
