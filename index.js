@@ -339,7 +339,6 @@ bot.on(message('web_app_data'), async (ctx) => {
 
 // === Express + webhook ===
 app.use(express.json());
-app.use(bot.webhookCallback('/bot'));
 const ALLOWED_ORIGINS = [
   process.env.FRONTEND_URL,             
   'https://web.telegram.org',     
@@ -504,26 +503,24 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
 
-  if (APP_URL) {
-    const webhookUrl = `${APP_URL}/bot`;
-    try {
-      const info = await bot.telegram.getWebhookInfo();
+  // запускаем бота через long polling, без вебхука
+  try {
+    // на всякий случай убираем старый вебхук
+    await bot.telegram.deleteWebhook();
+    await bot.launch();
 
-      if (info.url !== webhookUrl) {
-        await bot.telegram.setWebhook(webhookUrl);
-        console.log(`✅ Webhook установлен: ${webhookUrl}`);
-      } else {
-        console.log(`ℹ️ Webhook уже актуален: ${webhookUrl}`);
-      }
-
-      const me = await bot.telegram.getMe();
-      console.log(`[bot] logged in as @${me.username}, id=${me.id}`);
-      console.log(`[bot] ADMIN_CHAT_IDS =`, ADMIN_CHAT_IDS);
-    } catch (e) {
-      console.error('❌ Failed to set webhook automatically:', e.message);
-    }
+    const me = await bot.telegram.getMe();
+    console.log(`[bot] logged in as @${me.username}, id=${me.id}`);
+    console.log(`[bot] ADMIN_CHAT_IDS =`, ADMIN_CHAT_IDS);
+  } catch (e) {
+    console.error('❌ Failed to launch bot:', e.message);
   }
-  try{ await syncProductsFromGitHubToLocal(); }catch(e){ /* ignore */ }
+
+  try {
+    await syncProductsFromGitHubToLocal();
+  } catch (e) {
+    console.warn('syncProductsFromGitHubToLocal error', e.message);
+  }
 });
 
 // ===============================Локальное хранилище для products.json ===============================
