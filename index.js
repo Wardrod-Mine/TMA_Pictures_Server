@@ -754,7 +754,7 @@ app.get('/check_admin', async (req, res) => {
   }
 });
 
-app.get('/products', (req, res) => {
+app.get(['/products', '/api/products'], (req, res) => {
   try{
     const list = loadProductsFile();
     return res.json({ ok:true, products: list });
