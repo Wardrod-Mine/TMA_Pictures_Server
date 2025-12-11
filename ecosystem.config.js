@@ -3,6 +3,7 @@ module.exports = {
     {
       name: "tma-backend",
       script: "./index.js",
+      watch: false,
       env: {
         PORT: 3000,
         BOT_TOKEN: process.env.BOT_TOKEN,
