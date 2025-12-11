@@ -37,18 +37,17 @@ app.use((req, res, next) => {
 });
 
 app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true);
-    try {
-      const oh = new URL(origin).host;
-      const ok = allowList.some(a => a && new URL(a).host === oh);
-      return cb(ok ? null : new Error(`CORS blocked for ${origin}`), ok);
-    } catch { return cb(new Error(`CORS parse fail ${origin}`)); }
-  },
-  methods: ['GET','POST','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Telegram-Init-Data'],
-  optionsSuccessStatus: 204
+  origin: [
+    'https://trun.tmashop.ru',
+    'https://web.telegram.org',
+    'https://app.telegram.org'
+  ],
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Telegram-Init-Data'],
+  credentials: true,
+  preflightContinue: false
 }));
+
 app.options('*', cors());
 
 function ghHeaders() {
