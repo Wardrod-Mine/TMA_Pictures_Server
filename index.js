@@ -693,7 +693,7 @@ function extractUserIdFromRequest(req){
 }
 
 // ======= Проверка администратора (простой) =======
-app.post('/check_admin', express.json(), (req, res) => {
+app.post(['/check_admin', '/api/check_admin'], express.json(), (req, res) => {
   try {
     const initData = req.headers['telegram-init-data'] || req.body?.init_data || '';
     let userId = null;
@@ -718,7 +718,7 @@ app.post('/check_admin', express.json(), (req, res) => {
 });
 
 // ======= Проверка администратора (расширенная) =======
-app.get('/check_admin', async (req, res) => {
+app.get(['/check_admin', '/api/check_admin'], async (req, res) => {
   try {
     const init_data = req.query.init_data;
     const unsafe = req.query.unsafe === 'true';
@@ -735,13 +735,14 @@ app.get('/check_admin', async (req, res) => {
       warn('check_admin', 'Invalid init_data, fallback:', unsafe);
     }
 
-  if (!uid) {
-    if (process.env.ALLOW_UNSAFE_ADMIN === 'true') {
-      // небезопасный, но разрешённый режим — считаем админом
-      return res.json({ ok: true, isAdmin: true, admin: true });
+    if (!uid) {
+      if (process.env.ALLOW_UNSAFE_ADMIN === 'true') {
+        // небезопасный, но разрешённый режим — считаем админом
+        return res.json({ ok: true, isAdmin: true, admin: true });
+      }
+      return res.status(403).json({ ok: false, error: 'invalid_init_data' });
     }
-    return res.status(403).json({ ok: false, error: 'invalid_init_data' });
-  }
+
     const adminIds = (process.env.ADMIN_CHAT_IDS || '')
       .split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
     const isAdmin = adminIds.includes(String(uid));
@@ -753,6 +754,7 @@ app.get('/check_admin', async (req, res) => {
     return res.status(500).json({ ok: false, error: e.message });
   }
 });
+
 
 app.get(['/products', '/api/products'], (req, res) => {
   try{
