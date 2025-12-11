@@ -8,6 +8,7 @@ const app = express();
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { exec } = require('child_process');
 
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
@@ -47,7 +48,6 @@ app.use(cors({
   credentials: true,
   preflightContinue: false
 }));
-
 app.options('*', cors());
 
 function ghHeaders() {
@@ -582,25 +582,37 @@ async function githubPutFileContent(textContent, sha){
   }catch(e){ console.warn('githubPutFileContent error', e.message); return null; }
 }
 
-async function syncProductsFromGitHubToLocal(){
-  try{
-    const ghFile = await githubGetFileContent();  
-    if (!ghFile || !ghFile.content) {
-      console.warn('syncProductsFromGitHubToLocal: no content from GitHub');
-      return;
-    }
-    const localList = loadProductsFile();
-    const ghList = JSON.parse(ghFile.content);
-    const localHash = crypto.createHash('md5').update(JSON
-.stringify(localList)).digest('hex');
-    const ghHash = crypto.createHash('md5').update(JSON.stringify(ghList)).digest('hex');
-    if (localHash !== ghHash) {
-      saveProductsFile(ghList);
-      console.log('✅ products.json синхронизирован из GitHub');
-    } else {
-      console.log('ℹ️ products.json локальный актуален, синхронизация не нужна');
-    } 
-  }catch(e){ console.warn('syncProductsFromGitHubToLocal error', e.message); }
+async function syncProductsFromGitHubToLocal() {
+  const url = "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/products.json";
+
+  try {
+      const res = await fetch(url);
+      if (!res.ok) {
+          console.warn("[SYNC] GitHub returned error:", res.status);
+          return;
+      }
+
+      const ghText = await res.text();
+      if (!ghText.trim()) {
+          console.warn("[SYNC] GitHub returned empty file");
+          return;
+      }
+
+      const localList = loadProductsFile();
+      const ghList = JSON.parse(ghText);
+
+      const localHash = crypto.createHash("md5").update(JSON.stringify(localList)).digest("hex");
+      const ghHash = crypto.createHash("md5").update(JSON.stringify(ghList)).digest("hex");
+
+      if (localHash !== ghHash) {
+          saveProductsFile(ghList);
+          console.log("✔ products.json обновлён из GitHub");
+      } else {
+          console.log("ℹ products.json актуален, обновление не требуется");
+      }
+  } catch (e) {
+      console.error("[SYNC] Ошибка:", e.message);
+  }
 }
 
 function verifyInitData(initDataString){
@@ -903,4 +915,16 @@ app.delete('/images', express.json(), async (req, res) => {
     }
     return res.json({ ok:true, deleted });
   }catch(e){ console.error('DELETE /images error', e.message); return res.status(500).json({ ok:false, error: e.message }); }
+});
+
+// ======================== Deploy endpoint =========================
+app.post('/deploy', (req, res) => {
+  exec('/root/deploy/deploy.sh', (err, stdout, stderr) => {
+    if (err) {
+      console.error('DEPLOY ERROR:', err);
+      return res.status(500).send('Deploy failed');
+    }
+    console.log(stdout);
+    res.send('Deploy OK');
+  });
 });
