@@ -361,7 +361,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-app.post('/upload-image', upload.single('image'), async (req, res) => {
+app.post(['/upload-image', '/api/upload-image'], upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       warn('upload', 'no_file');
@@ -763,7 +763,7 @@ app.get(['/products', '/api/products'], (req, res) => {
   }catch(e){ console.error('GET /products error', e.message); return res.status(500).json({ ok:false }); }
 });
 
-app.post('/products', express.json(), async (req, res) => {
+app.post(['/products', '/api/products'], express.json(), async (req, res) => {
   try {
     const product = req.body?.product;
     const initData =
@@ -835,7 +835,7 @@ app.post('/products', express.json(), async (req, res) => {
 });
 
 // ======================== Удаление карточек =========================
-app.delete('/products/:id', express.json(), (req, res) => {
+app.delete(['/products/:id', '/api/products/:id'], express.json(), (req, res) => {
   try{
     const uid = extractUserIdFromRequest(req);
     if (!uid || !ADMIN_CHAT_IDS.includes(Number(uid))) return res.status(403).json({ ok:false, error:'not_admin' });
@@ -851,7 +851,7 @@ app.delete('/products/:id', express.json(), (req, res) => {
 });
 
 // ======================== Редактирование карточек =========================
-app.patch('/products/:id', express.json(), (req, res) => {
+app.patch(['/products/:id', '/api/products/:id'], express.json(), (req, res) => {
   try{
     const { init_data, updates } = req.body || {};
     const v = verifyInitData(init_data);
@@ -875,7 +875,7 @@ app.patch('/products/:id', express.json(), (req, res) => {
 });
 
 // ======================== Удаление изображений =========================
-app.delete('/images', express.json(), async (req, res) => {
+app.delete(['/images', '/api/images'], express.json(), async (req, res) => {
   try{
     const { public_id, path: imgPath, productId } = req.body || {};
     const uid = extractUserIdFromRequest(req);
