@@ -175,9 +175,10 @@ async function notifyAdmins(ctx, html) {
 
 // ======================== /start =========================
 bot.start(async (ctx) => {
+  const catalogUrl = buildTmaLink(BOT_USERNAME, TMA_START_PARAM) || FRONTEND_URL || POST_BUTTON_URL;
   await ctx.reply('📂 Добро пожаловать! Нажмите кнопку ниже, чтобы открыть каталог услуг:', {
     reply_markup: {
-      inline_keyboard: [[{ text: 'Каталог', web_app: { url: FRONTEND_URL } }]]
+      inline_keyboard: [[{ text: 'Каталог', url: catalogUrl }]]
     }
   });
 
@@ -527,9 +528,9 @@ app.listen(PORT, async () => {
 
     const me = await bot.telegram.getMe();
     BOT_USERNAME = BOT_USERNAME || me?.username || null;
-    if (!process.env.POST_BUTTON_URL && BOT_USERNAME) {
+    if (BOT_USERNAME) {
       ensurePostButtonUrl(BOT_USERNAME);
-      console.log(`[bot] post button → TMA: ${POST_BUTTON_URL}`);
+      console.log(`[bot] post button → ${POST_BUTTON_URL}`);
     }
     console.log(`[bot] logged in as @${me.username}, id=${me.id}`);
     console.log(`[bot] ADMIN_CHAT_IDS =`, ADMIN_CHAT_IDS);
