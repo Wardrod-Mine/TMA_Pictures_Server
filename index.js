@@ -18,7 +18,9 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const APP_URL = process.env.APP_URL;
 const FRONTEND_URL = process.env.FRONTEND_URL;
 const POST_BUTTON_TEXT = process.env.POST_BUTTON_TEXT || 'Открыть';
-const POST_BUTTON_URL  = process.env.POST_BUTTON_URL  || FRONTEND_URL || 'https://example.com';
+let POST_BUTTON_URL  = process.env.POST_BUTTON_URL  || FRONTEND_URL || 'https://example.com';
+const TMA_START_PARAM = process.env.TMA_START_PARAM || 'tma';
+let BOT_USERNAME = process.env.BOT_USERNAME || null;
 
 const GITHUB_BRANCH = process.env.GITHUB_ASSETS_BRANCH || process.env.GITHUB_COMMIT_BRANCH || 'main';
 const GITHUB_ASSETS_BASE = process.env.GITHUB_ASSETS_BASE || 'assets'; 
@@ -107,6 +109,20 @@ function err(tag, ...msg) {
   console.error(`[${t}] [ERROR:${tag}]`, ...msg);
 }
 
+function buildTmaLink(username, startParam) {
+  if (!username) return POST_BUTTON_URL;
+  const suffix = startParam ? `?startapp=${encodeURIComponent(startParam)}` : '';
+  return `https://t.me/${username}/app${suffix}`;
+}
+
+function ensurePostButtonUrl(username) {
+  if (!process.env.POST_BUTTON_URL && username) {
+    POST_BUTTON_URL = buildTmaLink(username, TMA_START_PARAM);
+  }
+  return POST_BUTTON_URL;
+}
+ensurePostButtonUrl(BOT_USERNAME);
+
 const ADMIN_CHAT_IDS = (process.env.ADMIN_CHAT_IDS || '')
   .split(/[,\s]+/)
   .map(s => s.trim())
@@ -170,7 +186,7 @@ bot.start(async (ctx) => {
     '🛠 <b>Публикация поста</b>',
     '• Ответьте командой <code>/post</code> на сообщение с текстом/фото+подписью.',
     '',
-    `Кнопка добавляется автоматически: «${POST_BUTTON_TEXT}» → ${POST_BUTTON_URL}`,
+    `Кнопка добавляется автоматически: «${POST_BUTTON_TEXT}» → ${ensurePostButtonUrl(BOT_USERNAME)}`,
     CHANNEL_ID
       ? `По умолчанию посты уходят в: <code>${CHANNEL_ID}</code>`
       : 'Без CHANNEL_ID пост уйдёт в текущий чат.'
@@ -460,10 +476,11 @@ app.post('/lead', async (req, res) => {
 });
 
 async function sendPost({ chatId, threadId, text, photoFileId }, tg) {
+  const buttonUrl = ensurePostButtonUrl(BOT_USERNAME);
   const baseExtra = {
     parse_mode: 'HTML',
     disable_web_page_preview: false,
-    reply_markup: { inline_keyboard: [[{ text: POST_BUTTON_TEXT, url: POST_BUTTON_URL }]] }
+    reply_markup: { inline_keyboard: [[{ text: POST_BUTTON_TEXT, url: buttonUrl }]] }
   };
 
   const tryOnce = async (withThread) => {
@@ -509,6 +526,11 @@ app.listen(PORT, async () => {
     await bot.launch();
 
     const me = await bot.telegram.getMe();
+    BOT_USERNAME = BOT_USERNAME || me?.username || null;
+    if (!process.env.POST_BUTTON_URL && BOT_USERNAME) {
+      ensurePostButtonUrl(BOT_USERNAME);
+      console.log(`[bot] post button → TMA: ${POST_BUTTON_URL}`);
+    }
     console.log(`[bot] logged in as @${me.username}, id=${me.id}`);
     console.log(`[bot] ADMIN_CHAT_IDS =`, ADMIN_CHAT_IDS);
   } catch (e) {
