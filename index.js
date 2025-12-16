@@ -176,27 +176,32 @@ async function notifyAdmins(ctx, html) {
 // ======================== /start =========================
 bot.start(async (ctx) => {
   const catalogUrl = buildTmaLink(BOT_USERNAME, TMA_START_PARAM) || FRONTEND_URL || POST_BUTTON_URL;
+
   await ctx.reply('📂 Добро пожаловать! Нажмите кнопку ниже, чтобы открыть каталог услуг:', {
     reply_markup: {
-      inline_keyboard: [[{ text: 'Каталог', url: catalogUrl }]]
+      inline_keyboard: [[
+        FRONTEND_URL
+          ? { text: 'Каталог', web_app: { url: FRONTEND_URL } }
+          : { text: 'Каталог', url: catalogUrl }
+      ]]
     }
   });
 
   if (ctx.chat?.type === 'private' && isAdmin(ctx.from?.id)) {
-    await ctx.reply([
-    '🛠 <b>Публикация поста</b>',
-    '• Ответьте командой <code>/post</code> на сообщение с текстом/фото+подписью.',
-    '',
-    `Кнопка добавляется автоматически: «${POST_BUTTON_TEXT}» → ${ensurePostButtonUrl(BOT_USERNAME)}`,
-    CHANNEL_ID
-      ? `По умолчанию посты уходят в: <code>${CHANNEL_ID}</code>`
-      : 'Без CHANNEL_ID пост уйдёт в текущий чат.'
-  ].join('\n'),
-  { parse_mode: 'HTML', disable_web_page_preview: true }
-);
+    await ctx.reply(
+      [
+        '🛠 <b>Публикация поста</b>',
+        '• Ответьте командой <code>/post</code> на сообщение с текстом/фото+подписью.',
+        '',
+        `Кнопка добавляется автоматически: «${POST_BUTTON_TEXT}» → ${ensurePostButtonUrl(BOT_USERNAME)}`,
+        CHANNEL_ID
+          ? `По умолчанию посты уходят в: <code>${CHANNEL_ID}</code>`
+          : 'Без CHANNEL_ID пост уйдёт в текущий чат.'
+      ].join('\n'),
+      { parse_mode: 'HTML', disable_web_page_preview: true }
+    );
   }
 });
-
 
 // ======================== test_admin ============================
 bot.command('test_admin', async (ctx) => {
