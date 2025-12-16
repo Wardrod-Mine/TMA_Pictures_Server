@@ -203,7 +203,7 @@ bot.start(async (ctx) => {
   }
 });
 
-// ======================== test_admin ============================
+// ======================== test_admin ===================
 bot.command('test_admin', async (ctx) => {
   const html = `<b>🔔 Тестовое сообщение</b>\n\nОт: ${who(ctx.from)}`;
   const ok = await notifyAdmins(ctx, html);
