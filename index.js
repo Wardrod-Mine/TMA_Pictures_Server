@@ -191,12 +191,9 @@ bot.start(async (ctx) => {
     await ctx.reply(
       [
         '🛠 <b>Публикация поста</b>',
-        '• Ответьте командой <code>/post</code> на сообщение с текстом/фото+подписью.',
+        '• Ответьте командой <code>/post</code> на сообщение с фото+текстом.',
         '',
         `Кнопка добавляется автоматически: «${POST_BUTTON_TEXT}» → ${ensurePostButtonUrl(BOT_USERNAME)}`,
-        CHANNEL_ID
-          ? `По умолчанию посты уходят в: <code>${CHANNEL_ID}</code>`
-          : 'Без CHANNEL_ID пост уйдёт в текущий чат.'
       ].join('\n'),
       { parse_mode: 'HTML', disable_web_page_preview: true }
     );
@@ -393,7 +390,18 @@ app.post(['/upload-image', '/api/upload-image'], upload.single('image'), async (
     const cardId = (req.body.cardId || req.query.cardId || 'misc')
       .toString().trim().replace(/[^a-zA-Z0-9_\-]/g, '_') || 'misc';
     const fileName = req.file.originalname.replace(/[^\w.\-]/g, '_');
-
+    const MAX_FILENAME_LEN = 128;
+    fileName = fileName.substring(0, MAX_FILENAME_LEN);
+    console.log('fileName:', fileName);
+    console.log('cardId:', cardId);
+    console.log('localDir:', localDir);
+    console.log('localPath:', localPath);
+    console.log('req.file.buffer:', req.file.buffer);
+    console.log('req.file.path:', req.file.path);
+    console.log('req.file.originalname:', req.file.originalname);
+    console.log('req.file.size:', req.file.size);
+    console.log('req.file.mimetype:', req.file.mimetype);
+   
     const localDir = path.join(__dirname, 'assets', cardId);
     fs.mkdirSync(localDir, { recursive: true });
     const localPath = path.join(localDir, fileName);
@@ -869,7 +877,12 @@ app.delete(['/products/:id', '/api/products/:id'], express.json(), (req, res) =>
     if (!uid || !ADMIN_CHAT_IDS.includes(Number(uid))) return res.status(403).json({ ok:false, error:'not_admin' });
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok:false, error:'bad_id' });
-    let list = loadProductsFile().filter(x=>x.id!==id);
+
+    let list = loadProductsFile();
+    const exists = list.some(x => x.id === id);
+    if (!exists) return res.status(404).json({ ok: false, error: 'not_found' });
+
+    list = list.filter(x=>x.id!==id);
     const ok = saveProductsFile(list);
     (async ()=>{
       try{ const txt = JSON.stringify(list, null, 2); const f = await githubGetFileContent(); const sha = f && f.sha ? f.sha : undefined; const p = await githubPutFileContent(txt, sha); if (!p.ok) console.warn('github push failed', p.error); else console.log('products.json pushed to GitHub'); }catch(e){ console.warn('push products to github error', e.message); }
