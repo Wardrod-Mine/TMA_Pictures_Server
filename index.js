@@ -365,7 +365,7 @@ const ALLOWED_ORIGINS = [
 
 const multer = require('multer');
 
-// Cloudinary removed — using local/GitHub storage only
+
 
 function ensureDir(p){ try{ fs.mkdirSync(p, { recursive: true }); }catch(e){} }
 const storage = multer.diskStorage({
@@ -382,7 +382,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Note: Cloudinary upload endpoint removed. Fallback local/GitHub handler remains below.
+
 
 app.post(['/upload-image', '/api/upload-image'], upload.single('image'), async (req, res) => {
   try {
@@ -935,15 +935,7 @@ app.delete(['/images', '/api/images'], express.json(), async (req, res) => {
 
     let deleted = false;
 
-    if (public_id && typeof cloudinary !== 'undefined' && cloudinary && cloudinary.uploader && process.env.CLOUDINARY_URL) {
-      try{
-        const r = await cloudinary.uploader.destroy(public_id);
-        console.log('cloudinary destroy', public_id, r);
-        deleted = true;
-      }catch(e){ console.warn('cloudinary destroy failed', e.message); }
-    }
-
-    if (!deleted && imgPath && String(imgPath).startsWith('/assets/')) {
+    if (imgPath && String(imgPath).startsWith('/assets/')) {
       try{
         const rel = imgPath.replace(/^\//,'');
         const abs = path.join(__dirname, rel);
