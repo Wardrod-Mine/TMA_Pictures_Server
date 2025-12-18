@@ -662,27 +662,40 @@ async function syncProductsFromGitHubToLocal() {
   }
 }
 
-function verifyInitData(initDataString){
+function verifyInitData(initDataString) {
   if (!initDataString || !BOT_TOKEN) return null;
-  try{
-    const parts = String(initDataString).split(/[\n&]/).filter(Boolean);
-    const kv = {};
-    for (const p of parts) {
-      const idx = p.indexOf('='); if (idx === -1) continue;
-      const k = p.slice(0, idx); const v = decodeURIComponent(p.slice(idx+1)); kv[k]=v;
+
+  try {
+    const params = new URLSearchParams(String(initDataString));
+
+    const hash = params.get('hash');
+    if (!hash) return null;
+    params.delete('hash');
+
+    // Собираем data_check_string
+    const entries = [];
+    for (const [k, v] of params.entries()) entries.push([k, v]);
+    entries.sort((a, b) => a[0].localeCompare(b[0]));
+    const data_check_string = entries.map(([k, v]) => `${k}=${v}`).join('\n');
+
+    // ВАЖНО: для WebApp ключ = HMAC_SHA256("WebAppData", BOT_TOKEN)
+    const secret_key = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
+    const calc_hash = crypto.createHmac('sha256', secret_key).update(data_check_string).digest('hex');
+
+    if (calc_hash !== hash) return null;
+
+    let user_id = null;
+    const userStr = params.get('user');
+    if (userStr) {
+      try { user_id = JSON.parse(userStr).id; } catch (_) {}
     }
-    const hash = kv.hash || kv.h || null; if (!hash) return null; delete kv.hash; delete kv.h;
-    const keys = Object.keys(kv).sort();
-    const data_check_arr = keys.map(k => `${k}=${kv[k]}`);
-    const data_check_string = data_check_arr.join('\n');
+    if (!user_id) user_id = params.get('user_id');
 
-    const secret_key = crypto.createHash('sha256').update(BOT_TOKEN).digest();
-    const hmac = crypto.createHmac('sha256', secret_key).update(data_check_string).digest('hex');
-    if (hmac !== hash) return null;
-
-    const user_id = kv.user ? (JSON.parse(kv.user).id || null) : (kv.user_id ? Number(kv.user_id) : null);
-    return { ok:true, data: kv, user_id };
-  }catch(e){ console.warn('verifyInitData error', e.message); return null; }
+    return { ok: true, data: Object.fromEntries(entries), user_id };
+  } catch (e) {
+    console.warn('verifyInitData error', e.message);
+    return null;
+  }
 }
 
 // Попытка извлечь user id из запроса: безопасный init_data или небезопасный init_data_unsafe
