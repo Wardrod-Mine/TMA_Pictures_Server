@@ -365,17 +365,7 @@ const ALLOWED_ORIGINS = [
 
 const multer = require('multer');
 
-const cloudinary = require('cloudinary').v2;
-if (process.env.CLOUDINARY_URL) {
-  try { cloudinary.config({ secure: true }); } catch (e) { console.warn('cloudinary config failed', e.message); }
-} else if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-    secure: true
-  });
-}
+// Cloudinary removed — using local/GitHub storage only
 
 function ensureDir(p){ try{ fs.mkdirSync(p, { recursive: true }); }catch(e){} }
 const storage = multer.diskStorage({
@@ -392,26 +382,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// memory storage for Cloudinary uploads (used when Cloudinary is configured)
-const uploadMemory = multer({ storage: multer.memoryStorage() });
-
-// Cloudinary upload endpoint (matches screenshot): prefer this route when POST to /api/upload-image
-app.post('/api/upload-image', uploadMemory.single('image'), async (req, res, next) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: 'No image file' });
-    // If cloudinary not configured, delegate to next handler (fallback local/GitHub storage)
-    if (!cloudinary || !cloudinary.uploader) return next();
-
-    const b64 = req.file.buffer.toString('base64');
-    const dataUri = `data:${req.file.mimetype};base64,${b64}`;
-
-    const r = await cloudinary.uploader.upload(dataUri, { folder: process.env.CLOUDINARY_FOLDER || 'tma' });
-    return res.json({ ok: true, url: r.secure_url || r.url, storage: 'cloudinary' });
-  } catch (e) {
-    console.error('cloudinary upload error', e);
-    return res.status(500).json({ error: e?.message || 'Upload error' });
-  }
-});
+// Note: Cloudinary upload endpoint removed. Fallback local/GitHub handler remains below.
 
 app.post(['/upload-image', '/api/upload-image'], upload.single('image'), async (req, res) => {
   try {
@@ -422,27 +393,33 @@ app.post(['/upload-image', '/api/upload-image'], upload.single('image'), async (
 
     const cardId = (req.body.cardId || req.query.cardId || 'misc')
       .toString().trim().replace(/[^a-zA-Z0-9_\-]/g, '_') || 'misc';
+
     let fileName = req.file.originalname.replace(/[^\w.\-]/g, '_');
     const MAX_FILENAME_LEN = 128;
     fileName = fileName.substring(0, MAX_FILENAME_LEN);
+
+    const localDir = path.join(__dirname, 'assets', cardId);
+    fs.mkdirSync(localDir, { recursive: true });
+    const localPath = path.join(localDir, fileName);
 
     console.log('fileName:', fileName);
     console.log('cardId:', cardId);
     console.log('localDir:', localDir);
     console.log('localPath:', localPath);
-    console.log('req.file.buffer:', req.file.buffer);
+    console.log('req.file.buffer:', Boolean(req.file.buffer));
     console.log('req.file.path:', req.file.path);
     console.log('req.file.originalname:', req.file.originalname);
     console.log('req.file.size:', req.file.size);
     console.log('req.file.mimetype:', req.file.mimetype);
-   
-    const localDir = path.join(__dirname, 'assets', cardId);
-    fs.mkdirSync(localDir, { recursive: true });
-    const localPath = path.join(localDir, fileName);
+
+    // multer already stored file on disk (req.file.path) or in memory (req.file.buffer)
     if (req.file.buffer) {
       fs.writeFileSync(localPath, req.file.buffer);
     } else if (req.file.path) {
       fs.copyFileSync(req.file.path, localPath);
+      if (req.file.path !== localPath) {
+        try { fs.unlinkSync(req.file.path); } catch (_) {}
+      }
     }
 
     if (GITHUB_REPO && GITHUB_TOKEN) {
