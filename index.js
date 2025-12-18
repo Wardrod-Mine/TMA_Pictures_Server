@@ -666,34 +666,41 @@ function verifyInitData(initDataString) {
   if (!initDataString || !BOT_TOKEN) return null;
 
   try {
-    const params = new URLSearchParams(String(initDataString));
-
-    const hash = params.get('hash');
+    const params = new URLSearchParams(initDataString);
+    const hash = params.get("hash");
     if (!hash) return null;
-    params.delete('hash');
+    params.delete("hash");
 
-    // Собираем data_check_string
-    const entries = [];
-    for (const [k, v] of params.entries()) entries.push([k, v]);
-    entries.sort((a, b) => a[0].localeCompare(b[0]));
-    const data_check_string = entries.map(([k, v]) => `${k}=${v}`).join('\n');
+    const dataCheckArr = [];
+    for (const [key, value] of params.entries()) {
+      dataCheckArr.push(`${key}=${value}`);
+    }
+    dataCheckArr.sort();
+    const dataCheckString = dataCheckArr.join("\n");
 
-    // ВАЖНО: для WebApp ключ = HMAC_SHA256("WebAppData", BOT_TOKEN)
-    const secret_key = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
-    const calc_hash = crypto.createHmac('sha256', secret_key).update(data_check_string).digest('hex');
+    // Ключ для проверки: HMAC_SHA256("WebAppData", BOT_TOKEN)
+    const secretKey = crypto
+      .createHmac("sha256", "WebAppData")
+      .update(BOT_TOKEN)
+      .digest();
+    const calcHash = crypto
+      .createHmac("sha256", secretKey)
+      .update(dataCheckString)
+      .digest("hex");
 
-    if (calc_hash !== hash) return null;
+    if (calcHash !== hash) return null;
 
     let user_id = null;
-    const userStr = params.get('user');
+    const userStr = params.get("user");
     if (userStr) {
-      try { user_id = JSON.parse(userStr).id; } catch (_) {}
+      try {
+        user_id = JSON.parse(userStr).id;
+      } catch (_) {}
     }
-    if (!user_id) user_id = params.get('user_id');
-
-    return { ok: true, data: Object.fromEntries(entries), user_id };
-  } catch (e) {
-    console.warn('verifyInitData error', e.message);
+    if (!user_id) user_id = params.get("user_id");
+    return { ok: true, user_id, data: Object.fromEntries(params) };
+  } catch (err) {
+    console.error("verifyInitData error:", err);
     return null;
   }
 }
