@@ -365,6 +365,18 @@ const ALLOWED_ORIGINS = [
 
 const multer = require('multer');
 
+const cloudinary = require('cloudinary').v2;
+if (process.env.CLOUDINARY_URL) {
+  try { cloudinary.config({ secure: true }); } catch (e) { console.warn('cloudinary config failed', e.message); }
+} else if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+    secure: true
+  });
+}
+
 function ensureDir(p){ try{ fs.mkdirSync(p, { recursive: true }); }catch(e){} }
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -380,6 +392,27 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// memory storage for Cloudinary uploads (used when Cloudinary is configured)
+const uploadMemory = multer({ storage: multer.memoryStorage() });
+
+// Cloudinary upload endpoint (matches screenshot): prefer this route when POST to /api/upload-image
+app.post('/api/upload-image', uploadMemory.single('image'), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No image file' });
+    // If cloudinary not configured, delegate to next handler (fallback local/GitHub storage)
+    if (!cloudinary || !cloudinary.uploader) return next();
+
+    const b64 = req.file.buffer.toString('base64');
+    const dataUri = `data:${req.file.mimetype};base64,${b64}`;
+
+    const r = await cloudinary.uploader.upload(dataUri, { folder: process.env.CLOUDINARY_FOLDER || 'tma' });
+    return res.json({ ok: true, url: r.secure_url || r.url, storage: 'cloudinary' });
+  } catch (e) {
+    console.error('cloudinary upload error', e);
+    return res.status(500).json({ error: e?.message || 'Upload error' });
+  }
+});
+
 app.post(['/upload-image', '/api/upload-image'], upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
@@ -389,9 +422,10 @@ app.post(['/upload-image', '/api/upload-image'], upload.single('image'), async (
 
     const cardId = (req.body.cardId || req.query.cardId || 'misc')
       .toString().trim().replace(/[^a-zA-Z0-9_\-]/g, '_') || 'misc';
-    const fileName = req.file.originalname.replace(/[^\w.\-]/g, '_');
+    let fileName = req.file.originalname.replace(/[^\w.\-]/g, '_');
     const MAX_FILENAME_LEN = 128;
     fileName = fileName.substring(0, MAX_FILENAME_LEN);
+
     console.log('fileName:', fileName);
     console.log('cardId:', cardId);
     console.log('localDir:', localDir);
