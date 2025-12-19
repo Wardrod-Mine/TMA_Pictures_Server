@@ -663,44 +663,40 @@ async function syncProductsFromGitHubToLocal() {
 }
 
 function verifyInitData(initDataString) {
-  if (!initDataString || !BOT_TOKEN) return null;
-
   try {
+    if (!BOT_TOKEN || !initDataString) return null;
+
     const params = new URLSearchParams(initDataString);
-    const hash = params.get("hash");
+
+    const hash = params.get('hash');
     if (!hash) return null;
-    params.delete("hash");
 
-    const dataCheckArr = [];
-    for (const [key, value] of params.entries()) {
-      dataCheckArr.push(`${key}=${value}`);
+    // data-check-string: все поля, кроме hash и signature, отсортированные по ключу
+    const pairs = [];
+    for (const [k, v] of params.entries()) {
+      if (k === 'hash' || k === 'signature') continue;
+      pairs.push([k, v]);
     }
-    dataCheckArr.sort();
-    const dataCheckString = dataCheckArr.join("\n");
+    pairs.sort(([a], [b]) => a.localeCompare(b));
 
-    // Ключ для проверки: HMAC_SHA256("WebAppData", BOT_TOKEN)
-    const secretKey = crypto
-      .createHmac("sha256", "WebAppData")
-      .update(BOT_TOKEN)
-      .digest();
-    const calcHash = crypto
-      .createHmac("sha256", secretKey)
-      .update(dataCheckString)
-      .digest("hex");
+    const dataCheckString = pairs.map(([k, v]) => `${k}=${v}`).join('\n');
+
+    // secret_key = HMAC_SHA256("WebAppData", bot_token)
+    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
+    const calcHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
     if (calcHash !== hash) return null;
 
+    // user_id достаём из user (JSON) либо user_id
     let user_id = null;
-    const userStr = params.get("user");
+    const userStr = params.get('user');
     if (userStr) {
-      try {
-        user_id = JSON.parse(userStr).id;
-      } catch (_) {}
+      try { user_id = JSON.parse(userStr)?.id ?? null; } catch (_) {}
     }
-    if (!user_id) user_id = params.get("user_id");
-    return { ok: true, user_id, data: Object.fromEntries(params) };
-  } catch (err) {
-    console.error("verifyInitData error:", err);
+    if (!user_id && params.get('user_id')) user_id = Number(params.get('user_id'));
+
+    return { ok: true, user_id, data: Object.fromEntries(params.entries()) };
+  } catch (e) {
     return null;
   }
 }
