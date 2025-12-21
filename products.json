@@ -1,23 +1,10 @@
 [
   {
     "id": "The book",
-    "title": "ALPHALIFE Sasha Trun",
+    "title": "Книга «Alphalife»",
     "shortDescription": "Цена 10 000₽",
-    "description": "A book by St. Petersburg artist Sasha Trun, presenting more than 600 author's variations of letters of the Latin alphabet.\n\nЦена: 10 000₽\n\nСвяжитесь для уточнения чтобы сделать \n «Предзаказ книги»",
-    "imgs": [
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/IMG_2832.jpeg",
-        "public_id": "assets/The_book/IMG_2832.jpeg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/IMG_3109.jpeg",
-        "public_id": "assets/The_book/IMG_3109.jpeg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/IMG_3111.jpeg",
-        "public_id": "assets/The_book/IMG_3111.jpeg"
-      }
-    ]
+    "description": "Иллюстративная энциклопедия букв.\nОткройте для себя более 600 уникальных характеров латинского алфавита в первой книге-коллекции художника Sasha Trun. Каждая буква здесь — не просто знак, а живой образ со своей историей, настроением и формой. Это бесконечный источник вдохновения для дизайнеров, иллюстраторов и всех, кто ценит красоту типографики и леттеринга. Погрузитесь в удивительный мир, где алфавит оживает.",
+    "imgs": []
   },
   {
     "id": "The merch",
