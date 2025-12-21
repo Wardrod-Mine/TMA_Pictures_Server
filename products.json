@@ -58,17 +58,5 @@
         "public_id": "assets/The_graffiti/IMG_2320.jpeg"
       }
     ]
-  },
-  {
-    "id": "Test1",
-    "title": "wasd",
-    "shortDescription": "wasd",
-    "description": "gg",
-    "imgs": [
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/Test1/wkMTKiGC1ps__1_.jpg",
-        "public_id": "assets/Test1/wkMTKiGC1ps__1_.jpg"
-      }
-    ]
   }
 ]
