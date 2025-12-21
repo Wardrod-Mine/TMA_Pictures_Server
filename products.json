@@ -21,22 +21,9 @@
   },
   {
     "id": "The merch",
-    "title": "Мерч",
-    "shortDescription": "Molnia Studio",
-    "description": "МОЛНИЯ — мерч Tsunami Picnic\n\nМОЛНИЯ — это полный цикл производства одежды: от концепции, дизайна, разработки лекал и пошива до упаковки и нанесения.\n\n«сделать заявку» 👇🏻",
-    "imgs": [
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_merch/IMG_2317.jpeg",
-        "public_id": "assets/The_merch/IMG_2317.jpeg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_merch/IMG_2316.jpeg",
-        "public_id": "assets/The_merch/IMG_2316.jpeg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_merch/IMG_2315.jpeg",
-        "public_id": "assets/The_merch/IMG_2315.jpeg"
-      }
-    ]
+    "title": "Гравюра",
+    "shortDescription": "Цена 100 000₽",
+    "description": "Графическое искусство, которое представляет Александр Трунилов, также известный как Trun. Работы выполнена оттиском с печатной формы (матрицы), созданной путём вырезания, травления и гравировки, на данном материале.",
+    "imgs": []
   }
 ]
