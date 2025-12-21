@@ -38,25 +38,5 @@
         "public_id": "assets/The_merch/IMG_2315.jpeg"
       }
     ]
-  },
-  {
-    "id": "The graffiti",
-    "title": "Художественные услуги",
-    "shortDescription": "Арт-инсталляции и оформление пространств",
-    "description": "Александр Трунилов — художник из Санкт-Петербурга, участник международных фестивалей и резиденций.\nРаботает с крупными брендами, галереями и городскими проектами.",
-    "imgs": [
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_graffiti/IMG_2319.jpeg",
-        "public_id": "assets/The_graffiti/IMG_2319.jpeg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_graffiti/IMG_2321.jpeg",
-        "public_id": "assets/The_graffiti/IMG_2321.jpeg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_graffiti/IMG_2320.jpeg",
-        "public_id": "assets/The_graffiti/IMG_2320.jpeg"
-      }
-    ]
   }
 ]
