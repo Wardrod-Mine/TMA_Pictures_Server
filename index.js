@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { exec } = require('child_process');
+const sharp = require('sharp');
 
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
@@ -405,8 +406,8 @@ app.post(['/upload-image', '/api/upload-image'], upload.single('image'), async (
     console.log('fileName:', fileName);
     console.log('cardId:', cardId);
     console.log('localDir:', localDir);
-    console.log('localPath:', localPath);
-    console.log('req.file.buffer:', Boolean(req.file.buffer));
+    console.log('localPath (intended):', localPath);
+    console.log('req.file.buffer present:', Boolean(req.file.buffer));
     console.log('req.file.path:', req.file.path);
     console.log('req.file.originalname:', req.file.originalname);
     console.log('req.file.size:', req.file.size);
@@ -422,12 +423,46 @@ app.post(['/upload-image', '/api/upload-image'], upload.single('image'), async (
       }
     }
 
+    // Post-process: read saved file, log image metadata and optionally convert unsupported formats (HEIC/HEIF -> jpg)
+    let finalPath = localPath;
+    try {
+      const buf = fs.readFileSync(localPath);
+      // save first bytes for diagnostics
+      try { fs.writeFileSync(localPath + '.raw', buf.slice(0, 512)); } catch(_){}
+
+      let meta = null;
+      try {
+        meta = await sharp(buf).metadata();
+      } catch (merr) {
+        console.warn('[upload] sharp metadata failed:', merr && merr.message);
+      }
+      console.log('[upload] image metadata:', meta && meta.format, meta && meta.width, meta && meta.height);
+
+      if (meta && String(meta.format || '').toLowerCase().includes('heif')) {
+        // convert HEIC/HEIF to JPEG for broader compatibility
+        const base = fileName.replace(/\.[^/.]+$/, '');
+        const newName = base + '.jpg';
+        const newPath = path.join(localDir, newName);
+        try {
+          await sharp(buf).jpeg({ quality: 85 }).toFile(newPath);
+          finalPath = newPath;
+          fileName = newName;
+          try { fs.unlinkSync(localPath); } catch(_){}
+          console.log('[upload] converted HEIC -> JPG:', newName);
+        } catch (convErr) {
+          console.warn('[upload] conversion failed:', convErr && convErr.message);
+        }
+      }
+    } catch (e) {
+      console.warn('[upload] post-process failed:', e && e.message);
+    }
+
+    // Prepare buffer to upload or return
+    const bufToUpload = fs.readFileSync(finalPath);
+
     if (GITHUB_REPO && GITHUB_TOKEN) {
       const repoPath = `${GITHUB_ASSETS_BASE}/${cardId}/${fileName}`;
-      const buf = req.file.buffer
-        ? req.file.buffer
-        : fs.readFileSync(localPath);
-      const r = await githubUpsertFile(repoPath, buf, `Asset: ${cardId}/${fileName}`);
+      const r = await githubUpsertFile(repoPath, bufToUpload, `Asset: ${cardId}/${fileName}`);
       log('upload', 'GitHub asset saved:', r.rawUrl);
       return res.json({ ok: true, url: r.rawUrl, path: repoPath, storage: 'github' });
     }
