@@ -4,68 +4,7 @@
     "title": "Книга «Alphalife»",
     "shortDescription": "Цена 10 000₽",
     "description": "Иллюстративная энциклопедия букв.\nОткройте для себя более 600 уникальных характеров латинского алфавита в первой книге-коллекции художника Sasha Trun. Каждая буква здесь — не просто знак, а живой образ со своей историей, настроением и формой. Это бесконечный источник вдохновения для дизайнеров, иллюстраторов и всех, кто ценит красоту типографики и леттеринга. Погрузитесь в удивительный мир, где алфавит оживает.",
-    "imgs": [
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/photo_5330501490822998428_y.jpg",
-        "public_id": "assets/The_book/photo_5330501490822998428_y.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/5287460747376451757.jpg",
-        "public_id": "assets/The_book/5287460747376451757.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/20240625_124925.heic",
-        "public_id": "assets/The_book/20240625_124925.heic"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/20240610_164047.heic",
-        "public_id": "assets/The_book/20240610_164047.heic"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/____2.jpg",
-        "public_id": "assets/The_book/____2.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/____1.jpg",
-        "public_id": "assets/The_book/____1.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/dark1222.png",
-        "public_id": "assets/The_book/dark1222.png"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/skin-avatar.png",
-        "public_id": "assets/The_book/skin-avatar.png"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/6.jpg",
-        "public_id": "assets/The_book/6.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/8.jpg",
-        "public_id": "assets/The_book/8.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/photo1708516877.jpeg",
-        "public_id": "assets/The_book/photo1708516877.jpeg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/____8.jpg",
-        "public_id": "assets/The_book/____8.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/photo1705149710.jpeg",
-        "public_id": "assets/The_book/photo1705149710.jpeg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/photo1705149605.jpeg",
-        "public_id": "assets/The_book/photo1705149605.jpeg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/photo1705149112.jpeg",
-        "public_id": "assets/The_book/photo1705149112.jpeg"
-      }
-    ]
+    "imgs": []
   },
   {
     "id": "The merch",
