@@ -4,28 +4,7 @@
     "title": "Книга «Alphalife»",
     "shortDescription": "Цена 10 000₽",
     "description": "Иллюстративная энциклопедия букв.\nОткройте для себя более 600 уникальных характеров латинского алфавита в первой книге-коллекции художника Sasha Trun. Каждая буква здесь — не просто знак, а живой образ со своей историей, настроением и формой. Это бесконечный источник вдохновения для дизайнеров, иллюстраторов и всех, кто ценит красоту типографики и леттеринга. Погрузитесь в удивительный мир, где алфавит оживает.",
-    "imgs": [
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/_________________________.png",
-        "public_id": "assets/The_book/_________________________.png"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/wkMTKiGC1ps__1_.jpg",
-        "public_id": "assets/The_book/wkMTKiGC1ps__1_.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/wkMTKiGC1ps.jpg",
-        "public_id": "assets/The_book/wkMTKiGC1ps.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/photo_5445327664819858159_c.jpg",
-        "public_id": "assets/The_book/photo_5445327664819858159_c.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/Bleach_Aesthetic_Anime_Desktop_Wallpaper_-_5120x2880.jpg",
-        "public_id": "assets/The_book/Bleach_Aesthetic_Anime_Desktop_Wallpaper_-_5120x2880.jpg"
-      }
-    ]
+    "imgs": []
   },
   {
     "id": "The merch",
