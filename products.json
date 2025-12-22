@@ -4,20 +4,7 @@
     "title": "Книга «Alphalife»",
     "shortDescription": "Цена 10 000₽",
     "description": "Иллюстративная энциклопедия букв.\nОткройте для себя более 600 уникальных характеров латинского алфавита в первой книге-коллекции художника Sasha Trun. Каждая буква здесь — не просто знак, а живой образ со своей историей, настроением и формой. Это бесконечный источник вдохновения для дизайнеров, иллюстраторов и всех, кто ценит красоту типографики и леттеринга. Погрузитесь в удивительный мир, где алфавит оживает.",
-    "imgs": [
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/__________________1_.jpg",
-        "public_id": "assets/The_book/__________________1_.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/__________________3.jpg",
-        "public_id": "assets/The_book/__________________3.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/_________________.jpg",
-        "public_id": "assets/The_book/_________________.jpg"
-      }
-    ]
+    "imgs": []
   },
   {
     "id": "The merch",
