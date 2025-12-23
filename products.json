@@ -36,6 +36,27 @@
     "title": "Линогравюра",
     "shortDescription": "Цена 6999₽",
     "description": "О работе:\nЛиногравюра, ручная печать.\n10 копий. Подписаны и пронумерованы.\nБумага: Bruno Visconti (100% хлопок, 300 г/м²). \n297Х210мм\nГод: 2025.",
-    "imgs": []
+    "imgs": [
+      {
+        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_merch/1.jpg",
+        "public_id": "assets/The_merch/1.jpg"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_merch/2.jpg",
+        "public_id": "assets/The_merch/2.jpg"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_merch/3.jpg",
+        "public_id": "assets/The_merch/3.jpg"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_merch/4.jpg",
+        "public_id": "assets/The_merch/4.jpg"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_merch/5.jpg",
+        "public_id": "assets/The_merch/5.jpg"
+      }
+    ]
   }
 ]
