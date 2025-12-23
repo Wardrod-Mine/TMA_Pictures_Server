@@ -11,11 +11,6 @@
     "title": "Гравюра (тест фото)",
     "shortDescription": "Цена 100 000₽",
     "description": "Графическое искусство, которое представляет Александр Трунилов, также известный как Trun. Работы выполнена оттиском с печатной формы (матрицы), созданной путём вырезания, травления и гравировки, на данном материале.",
-    "imgs": [
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_merch/9113.jpg",
-        "public_id": "assets/The_merch/9113.jpg"
-      }
-    ]
+    "imgs": []
   }
 ]
