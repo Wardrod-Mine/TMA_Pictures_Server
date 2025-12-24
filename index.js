@@ -610,9 +610,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
 
-  // запускаем бота через long polling, без вебхука
   try {
-    // на всякий случай убираем старый вебхук
     await bot.telegram.deleteWebhook();
     await bot.launch();
 
