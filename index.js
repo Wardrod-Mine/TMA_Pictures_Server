@@ -592,10 +592,6 @@ async function sendPost({ chatId, threadId, text, photoFileId }, tg) {
   }
 }
 
-// (check_admin POST and products POST earlier in file were duplicates and removed)
-
-// deleted duplicate delete handler — consolidated handler below
-
 app.get('/', (req, res) => res.send('Bot is running'));
 app.get('/debug', async (req, res) => {
   try {
