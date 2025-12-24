@@ -501,7 +501,7 @@ function pickLargestPhoto(sizes) {
   return sizes.reduce((a, b) => (a.file_size || 0) > (b.file_size || 0) ? a : b);
 }
 
-app.post('/lead', async (req, res) => {
+app.post(['/lead', '/api/lead'], async (req, res) => {
   try {
     const data = req.body;
     console.log('\n==== [lead received] ====');
