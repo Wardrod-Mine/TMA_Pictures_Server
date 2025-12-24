@@ -320,24 +320,26 @@ bot.on(message('web_app_data'), async (ctx) => {
 
   const stamp = new Date().toLocaleString('ru-RU');
   let html = '';
+  const unameRaw = data.username || data.from?.username || null;
+  const uname = unameRaw ? '@' + String(unameRaw).replace(/^@/, '') : null;
 
-  // === разные типы заявок ===
   if (data.action === 'send_request' || data.action === 'send_request_form') {
     html =
       `📄 <b>Заявка (форма)</b>\n` +
       `<b>Имя:</b> ${fmt(data.name)}\n` +
+      `<b>Юзернейм:</b> ${fmt(uname)}\n` +
       `<b>Телефон:</b> ${fmt(data.phone)}\n` +
       (data.comment ? `<b>Комментарий:</b> ${fmt(data.comment)}\n` : '') +
       (data.selected || data.product?.title ? `<b>Выбранный продукт:</b> ${fmt(data.selected || data.product.title)}\n` : '');
   }
-  else if (data.type === 'lead' || data.action === 'consult') {
+  else if (data.action === 'consult') {
     html =
-      `💬 <b>Запрос консультации</b>\n` +
+      `👨‍💻 <b>Связаться с разработчиком</b>\n` +
       `<b>Имя:</b> ${fmt(data.name)}\n` +
-      `<b>Телефон:</b> ${fmt(data.phone)}\n` +
-      (data.comment ? `<b>Комментарий:</b> ${fmt(data.comment)}\n` : '');
-  } 
-
+      `<b>Юзернейм:</b> ${fmt(uname)}\n` +
+      `<b>Контакт:</b> ${fmt(data.contact)}\n` +
+      (data.message ? `<b>Комментарий:</b> ${fmt(data.message)}\n` : '');
+  }
  
   else {
     html =
@@ -530,7 +532,7 @@ app.post(['/lead', '/api/lead'], async (req, res) => {
     } 
     else if (data.action === 'consult') {
       html =
-        `💬 <b>Запрос консультации</b>\n` +
+        `💬 <b>Связаться с разработчиком</b>\n` +
         `<b>Имя:</b> ${fmt(data.name)}\n` +
         `<b>Контакт:</b> ${fmt(data.contact)}\n` +
         (data.message ? `<b>Комментарий:</b> ${fmt(data.message)}\n` : '');
