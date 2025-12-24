@@ -511,6 +511,12 @@ app.post(['/lead', '/api/lead'], async (req, res) => {
       return res.status(400).json({ ok: false, error: 'ADMIN_CHAT_IDS is empty' });
     }
 
+    // Guard: ensure bot is ready to send messages
+    if (!bot || !bot.telegram || typeof bot.telegram.sendMessage !== 'function') {
+      console.warn('[lead] bot.telegram not ready');
+      return res.status(503).json({ ok: false, error: 'bot_not_ready' });
+    }
+
     const stamp = new Date().toLocaleString('ru-RU');
     let html = '';
 
@@ -544,6 +550,20 @@ app.post(['/lead', '/api/lead'], async (req, res) => {
     console.error('❌ /lead error:', err);
     res.status(500).json({ ok: false, error: err.message });
   }
+});
+
+// Express error handler — catch any uncaught errors in middleware/routes
+app.use((err, req, res, next) => {
+  console.error('[express] unhandled error:', err && err.stack ? err.stack : err);
+  try { res.status(500).json({ ok: false, error: err && err.message ? err.message : 'internal_error' }); } catch(e){}
+});
+
+// Global process-level handlers to avoid server crash and to log details
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[process] unhandledRejection:', reason instanceof Error ? reason.stack : reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[process] uncaughtException:', err && err.stack ? err.stack : err);
 });
 
 async function sendPost({ chatId, threadId, text, photoFileId }, tg) {
