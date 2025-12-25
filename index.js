@@ -133,7 +133,6 @@ const ADMIN_CHAT_IDS = (process.env.ADMIN_CHAT_IDS || '')
 
 const ADMIN_THREAD_ID = process.env.ADMIN_THREAD_ID ? Number(process.env.ADMIN_THREAD_ID) : null;
 
-
 if (!BOT_TOKEN) throw new Error('Нет BOT_TOKEN в .env');
 if (!APP_URL) console.warn('⚠️ APP_URL не задан — вебхук не установится');
 if (!ADMIN_CHAT_IDS.length) console.warn('⚠️ ADMIN_CHAT_IDS пуст — /lead не сможет доставить заявку.');
