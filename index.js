@@ -319,14 +319,14 @@ bot.on(message('web_app_data'), async (ctx) => {
 
   const stamp = new Date().toLocaleString('ru-RU');
   let html = '';
-  const unameRaw = data.username || data.from?.username || null;
-  const uname = unameRaw ? '@' + String(unameRaw).replace(/^@/, '') : null;
+  const unameRaw = data?.username || ctx.from?.username || null;
+  const unameAt = unameRaw ? `@${String(unameRaw).replace(/^@/, '')}` : null;
 
   if (data.action === 'send_request' || data.action === 'send_request_form') {
     html =
       `📄 <b>Заявка (форма)</b>\n` +
       `<b>Имя:</b> ${fmt(data.name)}\n` +
-      `<b>Юзернейм:</b> ${fmt(uname)}\n` +
+      `<b>Юзернейм:</b> ${fmt(unameAt)}\n` +
       `<b>Телефон:</b> ${fmt(data.phone)}\n` +
       (data.comment ? `<b>Комментарий:</b> ${fmt(data.comment)}\n` : '') +
       (data.selected || data.product?.title ? `<b>Выбранный продукт:</b> ${fmt(data.selected || data.product.title)}\n` : '');
@@ -335,7 +335,7 @@ bot.on(message('web_app_data'), async (ctx) => {
     html =
       `👨‍💻 <b>Связаться с разработчиком</b>\n` +
       `<b>Имя:</b> ${fmt(data.name)}\n` +
-      `<b>Юзернейм:</b> ${fmt(uname)}\n` +
+      `<b>Юзернейм:</b> ${fmt(unameAt)}\n` +
       `<b>Контакт:</b> ${fmt(data.contact)}\n` +
       (data.message ? `<b>Комментарий:</b> ${fmt(data.message)}\n` : '');
   }
@@ -438,7 +438,6 @@ app.post(['/upload-image', '/api/upload-image'], (req, res) => {
       let finalPath = localPath;
       try {
         const buf = fs.readFileSync(localPath);
-        // save first bytes for diagnostics
         try { fs.writeFileSync(localPath + '.raw', buf.slice(0, 512)); } catch(_){}
 
         let meta = null;
@@ -467,8 +466,6 @@ app.post(['/upload-image', '/api/upload-image'], (req, res) => {
       } catch (e) {
         console.warn('[upload] post-process failed:', e && e.message);
       }
-
-      // Prepare buffer to upload or return
       const bufToUpload = fs.readFileSync(finalPath);
 
       if (GITHUB_REPO && GITHUB_TOKEN) {
@@ -512,7 +509,6 @@ app.post(['/lead', '/api/lead'], async (req, res) => {
       return res.status(400).json({ ok: false, error: 'ADMIN_CHAT_IDS is empty' });
     }
 
-    // Guard: ensure bot is ready to send messages
     if (!bot || !bot.telegram || typeof bot.telegram.sendMessage !== 'function') {
       console.warn('[lead] bot.telegram not ready');
       return res.status(503).json({ ok: false, error: 'bot_not_ready' });
@@ -520,21 +516,29 @@ app.post(['/lead', '/api/lead'], async (req, res) => {
 
     const stamp = new Date().toLocaleString('ru-RU');
     let html = '';
+    const unameRaw = data?.username || ctx.from?.username || null;
+    const unameAt = unameRaw ? `@${String(unameRaw).replace(/^@/, '')}` : null;
+
 
     if (data.action === 'send_request_form') {
       html =
         `📄 <b>Заявка (форма)</b>\n` +
         `<b>Имя:</b> ${fmt(data.name)}\n` +
+        `<b>Юзернейм:</b> ${fmt(unameAt)}\n` +
         `<b>Телефон:</b> ${fmt(data.phone)}\n` +
         (data.comment ? `<b>Комментарий:</b> ${fmt(data.comment)}\n` : '') +
         (data.service ? `<b>Услуга:</b> ${fmt(data.service)}\n` : '');
     } 
     else if (data.action === 'consult') {
+      const contact = data.contact || data.phone || null;
+      const comment = data.message || data.comment || null;
+
       html =
         `💬 <b>Связаться с разработчиком</b>\n` +
         `<b>Имя:</b> ${fmt(data.name)}\n` +
-        `<b>Контакт:</b> ${fmt(data.contact)}\n` +
-        (data.message ? `<b>Комментарий:</b> ${fmt(data.message)}\n` : '');
+        `<b>Юзернейм:</b> ${fmt(unameAt)}\n` +
+        `<b>Контакт:</b> ${fmt(contact)}\n` +
+        (comment ? `<b>Комментарий:</b> ${fmt(comment)}\n` : '');
     }
     else {
       html =
@@ -769,27 +773,22 @@ function extractUserIdFromRequest(req){
     const fromBody = req.body?.init_data || req.body?.initData || req.body?.init_data_unsafe || req.body?.init_data_unsafe_raw;
     const init = fromHeader || fromBody || '';
 
-    // 1) попробуем безопасно проверить подпись
     if (init && typeof init === 'string'){
       const v = verifyInitData(init);
       if (v) {
-        // verifyInitData может вернуть { ok:true, data, user_id }
         if (v.user_id) return Number(v.user_id);
         if (v.data && v.data.user) try { return Number(JSON.parse(v.data.user).id); } catch(e){}
         if (v.user && v.user.id) return Number(v.user.id);
       }
     }
 
-    // 2) попробовать небезопасные поля (initDataUnsafe) — полезно для разработки
     const unsafe = req.body?.init_data_unsafe || req.body?.initDataUnsafe || req.body?.init_data_unsafe_raw || (req.body && req.body.init_data && typeof req.body.init_data === 'string' && req.body.init_data.includes('user=') && req.body.init_data);
     if (unsafe) {
       try{
-        // Если unsafe уже объект (initDataUnsafe), извлекаем напрямую
         if (typeof unsafe === 'object' && unsafe.user) {
           const uid = unsafe.user.id || (unsafe.user && unsafe.user.id);
           if (uid) return Number(uid);
         }
-        // Если это строка — парсим URLSearchParams
         const kv = Object.fromEntries(new URLSearchParams(String(unsafe)));
         if (kv.user) {
           const u = JSON.parse(kv.user);
@@ -798,7 +797,6 @@ function extractUserIdFromRequest(req){
       }catch(e){}
     }
 
-    // 3) если разрешён небезопасный режим в env — попытаемся распарсить init_data без проверки подписи
     if (process.env.ALLOW_UNSAFE_ADMIN === 'true'){
       const s = req.body?.init_data || req.headers['telegram-init-data'] || '';
       if (s && typeof s === 'string'){
@@ -861,7 +859,6 @@ app.get(['/check_admin', '/api/check_admin'], async (req, res) => {
 
     if (!uid) {
       if (process.env.ALLOW_UNSAFE_ADMIN === 'true') {
-        // небезопасный, но разрешённый режим — считаем админом
         return res.json({ ok: true, isAdmin: true, admin: true });
       }
       return res.status(403).json({ ok: false, error: 'invalid_init_data' });
@@ -897,10 +894,7 @@ app.post(['/products', '/api/products'], express.json(), async (req, res) => {
 
     log('products', 'Incoming product:', product?.id || '(no id)');
 
-    // 1) Подпись Telegram
     const v = verifyInitData(initData);
-
-    // 2) Получаем uid
 
     let uid = null;
     if (v?.user?.id) uid = Number(v.user.id);
@@ -915,7 +909,6 @@ app.post(['/products', '/api/products'], express.json(), async (req, res) => {
       warn('products', 'Invalid init_data');
       return res.status(403).json({ ok: false, error: 'invalid_init_data' });
     }
-    // 3) Проверяем админа
 
     const adminIds = (process.env.ADMIN_CHAT_IDS || '')
       .split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
@@ -937,7 +930,6 @@ app.post(['/products', '/api/products'], express.json(), async (req, res) => {
     const ok = saveProductsFile(list);
     log('products', `File write ${ok ? 'OK' : 'FAIL'}. Total: ${list.length}`);
 
-    // фоновый пуш products.json в GitHub
     (async () => {
       try {
         const txt = JSON.stringify(list, null, 2);
