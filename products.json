@@ -44,6 +44,11 @@
     "title": "Графика",
     "shortDescription": "Цена 8000₽",
     "description": "Графика\nБумага: Academy Watercolor Paper (100% хлопок, 300 г/м²).\nТираж: 10 нумерованных экземпляров\nГод создания: 2025",
-    "imgs": []
+    "imgs": [
+      {
+        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/Grafika/IMG_7092.jpg",
+        "public_id": "assets/Grafika/IMG_7092.jpg"
+      }
+    ]
   }
 ]
