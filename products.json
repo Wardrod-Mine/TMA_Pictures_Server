@@ -1,62 +1,9 @@
 [
   {
-    "id": "The book",
-    "title": "Книга «Alphalife»",
-    "shortDescription": "Цена 10 000₽",
-    "description": "Иллюстративная энциклопедия букв.\n\nОткройте для себя более 600 уникальных характеров латинского алфавита в первой книге-коллекции художника Sasha Trun. \n\nКаждая буква здесь — не просто знак, а живой образ со своей историей, настроением и формой. Это бесконечный источник вдохновения для дизайнеров, иллюстраторов и всех, кто ценит красоту типографики и леттеринга. \n\nПогрузитесь в удивительный мир, где алфавит оживает.",
-    "imgs": [
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/1.jpg",
-        "public_id": "assets/The_book/1.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/2.jpg",
-        "public_id": "assets/The_book/2.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/3.jpg",
-        "public_id": "assets/The_book/3.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/4.jpg",
-        "public_id": "assets/The_book/4.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/The_book/5.jpg",
-        "public_id": "assets/The_book/5.jpg"
-      }
-    ]
-  },
-  {
-    "id": "linogravura",
-    "title": "Линогравюра, ручная печать.",
-    "shortDescription": "Цена 7000₽",
-    "description": "Линогравюра\n10 копий. Подписаны и пронумерованы.\nБумага: Bruno Visconti (100% хлопок, 300 г/м²). \n297Х210мм\nГод: 2025",
-    "imgs": [
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/linogravura/1.jpg",
-        "public_id": "assets/linogravura/1.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/linogravura/IMG_6688.jpg",
-        "public_id": "assets/linogravura/IMG_6688.jpg"
-      }
-    ]
-  },
-  {
-    "id": "Grafika",
-    "title": "Графика",
-    "shortDescription": "Цена 8000₽",
-    "description": "Графика\nБумага: Academy Watercolor Paper (100% хлопок, 300 г/м²).\nТираж: 10 нумерованных экземпляров\nГод создания: 2025",
-    "imgs": [
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/Grafika/IMG_7092.jpg",
-        "public_id": "assets/Grafika/IMG_7092.jpg"
-      },
-      {
-        "url": "https://raw.githubusercontent.com/Wardrod-Mine/TMA_Pictures_Server/main/assets/Grafika/IMG_7090.jpg",
-        "public_id": "assets/Grafika/IMG_7090.jpg"
-      }
-    ]
+    "id": "ываыу",
+    "title": "аыва",
+    "shortDescription": "ываы",
+    "description": "",
+    "imgs": []
   }
 ]
